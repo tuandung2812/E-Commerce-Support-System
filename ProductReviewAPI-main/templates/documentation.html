@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Review API</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <link rel="stylesheet" href="../static/style2.css">
+</head>
+<body>
+  <navbar>
+    <div class="logo"><a href="/">Product Review API</a></div>
+    <div class="links">
+      <ul>
+        <li><a href="/doc">Documentation</a></li>
+        <li><a href="/api_key">API Key</a></li>
+      </ul>
+    </div>
+  </navbar>
+  <div class="doc">
+    <!-- End point !-->
+    <h1>API Endpoint</h1>
+    <hr>
+    <div style="font-size:16px;">Send HTTP requests to:</div>
+    <div class="url">https://product-review-api.herokuapp.com</div>
+
+    <!-- API key -->
+    <h1>API key</h1>
+    <hr>
+    <div>To generate new API key, go to <a href="/api_key" id="doc-link">API Key</a></div>
+    <div>Alternatively, send POST request with device name data to:</div>
+    <div class="url">https://product-review-api.herokuapp.com/new_api_key</div>
+    
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th scope="col">Parameters</th>
+          <th scope="col">Required</th>
+          <th scope="col">Default value</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td scope="row">device_name</td>
+          <td>Yes</td>
+          <td>&lt;empty&gt;</td>
+          <td>Device name correspond to the to be generated API key</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Example:</h2>
+    <div class="code">
+      <div>import requests</div>
+      <div>key = requests.post("https://product-review-api.herokuapp.com/new_api_key", data={'device_name': 'test1'})</div>
+      <div>print(key.json())</div>
+    </div>
+    <hr>
+
+    <!-- Parameters -->
+    <h1>Parameters</h1>
+    <hr>
+    <h2>Get reviews by URL</h2>
+    <div>Send GET request to:</div>
+    <div class="url">https://product-review-api.herokuapp.com/review/byurl</div>
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th scope="col">Parameters</th>
+          <th scope="col">Required</th>
+          <th scope="col">Valid Options</th>
+          <th scope="col">Default value</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td scope="row">api_key</td>
+          <td>Yes</td>
+          <td></td>
+          <td>&lt;empty&gt;</td>
+          <td>API key to authenticate</td>
+        </tr>
+        <tr>
+          <td scope="row">url</td>
+          <td>Yes</td>
+          <td></td>
+          <td>&lt;empty&gt;</td>
+          <td>Link to the product page</td>
+        </tr>
+        <tr>
+          <td scope="row">site</td>
+          <td>Yes</td>
+          <td>lazada, tiki, sendo</td>
+          <td>&lt;empty&gt;</td>
+          <td>The platform of the url provided</td>
+        </tr>
+        <tr>
+          <td scope="row">maxreview</td>
+          <td>No</td>
+          <td></td>
+          <td>5</td>
+          <td>Maximum number of reviews of the product, max = 10</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>Example:</h2>
+    <div class="code">
+      <div>import requests</div>
+      <div>url = "https://www.sendo.vn/op-lung-iphone-6-plus-6s-plus-chong-soc-360-17878754.html"</div>
+      <div>result = requests.get("https://product-review-api.herokuapp.com/review/byurl", params={"api_key": "your key", "url": url, "site": "sendo"})</div>
+      <div>print(result.json())</div>
+    </div>
+    <hr>
+
+    <h2>Get reviews by product name</h2>
+    <div>Send GET request to:</div>
+    <div class="url">https://product-review-api.herokuapp.com/review/byname</div>
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th scope="col">Parameters</th>
+          <th scope="col">Required</th>
+          <th scope="col">Valid Options</th>
+          <th scope="col">Default value</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td scope="row">api_key</td>
+          <td>Yes</td>
+          <td></td>
+          <td>&lt;empty&gt;</td>
+          <td>API key to authenticate</td>
+        </tr>
+        <tr>
+          <td scope="row">name</td>
+          <td>Yes</td>
+          <td></td>
+          <td>&lt;empty&gt;</td>
+          <td>Name of the product</td>
+        </tr>
+        <tr>
+          <td scope="row">site</td>
+          <td>Yes</td>
+          <td>lazada, tiki, sendo, all</td>
+          <td>&lt;empty&gt;</td>
+          <td>The platform that the product is from</td>
+        </tr>
+        <tr>
+          <td scope="row">productnum</td>
+          <td>No</td>
+          <td></td>
+          <td>3</td>
+          <td>Maximum number products to be scraped, max = 10</td>
+        </tr>
+        <tr>
+          <td scope="row">maxreview</td>
+          <td>No</td>
+          <td></td>
+          <td>5</td>
+          <td>Maximum number of reviews of each product, max = 10</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>Example:</h2>
+    <div class="code">
+      <div>import requests</div>
+      <div>result = requests.get("https://product-review-api.herokuapp.com/review/byname", params={"api_key": "your key", "name": "tủ lạnh lg", "site": "sendo"})</div>
+      <div>print(result.json())</div>
+    </div>
+  </div>
+  
+</body>
+</html>

@@ -1,0 +1,41 @@
+[
+    {
+        "product_name": "product1",
+        "source": "lazada",
+        "reviews":
+        [
+            {
+                "id": 0,
+                "rating": 5,
+                "review": "review0",
+                "datetime": "datetime"              
+            },
+            {
+                "id": 1,
+                "rating": 5,
+                "review": "review1",
+                "datetime": "datetime"
+            }
+             
+        ]
+    },
+    {
+        "product_name": "product2",
+        "source": "tiki",
+        "reviews":
+        [
+            {
+                "id": 0,
+                "rating": 5,
+                "review": "review0",
+                "datetime": "datetime"                
+            },
+            {
+                "id": 1,
+                "rating": 5,
+                "review": "review1",
+                "datetime": "datetime"
+            }
+        ]
+    }
+]
