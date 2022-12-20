@@ -1,8 +1,11 @@
 import logging
 import os
+from random import uniform
 
 from bs4 import BeautifulSoup
-from selenium.common import TimeoutException, NoSuchElementException, ElementClickInterceptedException
+from selenium.common import TimeoutException, NoSuchElementException, ElementClickInterceptedException, \
+    MoveTargetOutOfBoundsException
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -21,6 +24,7 @@ class LazadaScraper(CommonScraper):
 
     def get_product_urls(self):
         for category, category_url in categories.items():
+            logger.info("Scraping category: " + category)
             output_dir = os.path.join(self.data_dir, category)
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
@@ -68,15 +72,27 @@ class LazadaScraper(CommonScraper):
 
     def check_popup(self):
         try:
-            logging.info("Checking for popup")
-            popup = self.driver.find_element(By.CLASS_NAME, 'baxia-dialog-close')
-            logging.info("Lazada popup detected")
-            popup.click()
-            logging.info("Lazada popup clicked")
+            logger.info("Checking for popup")
+            WebDriverWait(self.driver, self.wait_timeout).until(EC.visibility_of_element_located((By.ID, 'baxia-dialog-content')))
+            logger.info("Lazada popup detected")
+            self.driver.switch_to.frame('baxia-dialog-content')
+            logger.info("Switched to popup frame")
+            slide_button = self.driver.find_element(By.CLASS_NAME, 'btn_slide')
+            logger.info("Slide button found")
+            actions = ActionChains(self.driver)
+            actions.click_and_hold(slide_button).perform()
+            v = 0
+            a = 3
+            for t in range(100):
+                rng = uniform(0.9, 1.1)
+                actions.move_by_offset(v + a * rng * t, rng * 5).perform()
             return True
         except NoSuchElementException:
             logging.info("Popup not found")
             return False
+        except MoveTargetOutOfBoundsException:
+            logger.info("Finished dragging")
+            return True
 
     # def __del__(self):
     #     self.driver.quit()

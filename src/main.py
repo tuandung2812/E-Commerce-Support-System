@@ -1,22 +1,17 @@
-#!/usr/bin/env python
+import logging
+from scraper.lazada_scraper import LazadaScraper
 
-import unittest
-from selenium import webdriver
+logger = logging.getLogger('scraper')
+logger.setLevel(logging.INFO)
 
-driver = webdriver.Chrome("/usr/bin/chromedriver")
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
 
-# class TestUbuntuHomepage(unittest.TestCase):
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-#     def setUp(self):
-#         self.browser = webdriver.Firefox()
+ch.setFormatter(formatter)
 
-#     def testTitle(self):
-#         self.browser.get('http://www.ubuntu.com/')
-#         self.assertIn('Ubuntu', self.browser.title)
+logger.addHandler(ch)
 
-#     def tearDown(self):
-#         self.browser.quit()
-
-
-# if __name__ == '__main__':
-# unittest.main(verbosity=2)
+if __name__ == '__main__':
+    LazadaScraper(num_page=10).get_product_urls()
