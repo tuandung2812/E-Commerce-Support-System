@@ -2,7 +2,7 @@ import logging
 import os
 from abc import abstractmethod, ABC
 
-from selenium import webdriver
+import undetected_chromedriver as uc
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +15,9 @@ class CommonScraper(ABC):
         self.wait_timeout = wait_timeout
         self.retry_num = retry_num
 
-        option = webdriver.FirefoxOptions()
-        option.set_capability("pageLoadStrategy", "eager")
-        driver = webdriver.Firefox(options=option)
+        options = uc.ChromeOptions()
+        options.set_capability("pageLoadStrategy", "eager")
+        driver = uc.Chrome(options=options)
         self.driver = driver
 
     def write_to_file(self, text, file_name):
@@ -32,3 +32,6 @@ class CommonScraper(ABC):
     @abstractmethod
     def get_product_info(self):
         pass
+
+    def __del__(self):
+        self.driver.quit()

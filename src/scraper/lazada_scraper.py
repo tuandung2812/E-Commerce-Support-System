@@ -17,7 +17,8 @@ categories = {
     'Đồ ngủ và nội y': 'https://www.lazada.vn/do-ngu-noi-y/?spm=a2o4n.home.cate_8.3.37df3bdcnLOFDe',
     'Phụ kiện nữ': 'https://www.lazada.vn/phu-kien-cho-nu/?spm=a2o4n.home.cate_8.4.37df3bdcSV9RDy',
     'Túi xách nữ': 'https://www.lazada.vn/tui-cho-nu/?spm=a2o4n.home.cate_8.5.37df3bdcnLOFDe',
-    'Trang sức nữ': 'https://www.lazada.vn/trang-suc-nu/?page=1&sort=pricedesc&spm=a2o4n.home.cate_8.6.37df3bdcnLOFDe', # no product wtf
+    'Trang sức nữ': 'https://www.lazada.vn/trang-suc-nu/?page=1&sort=pricedesc&spm=a2o4n.home.cate_8.6.37df3bdcnLOFDe',
+    # no product wtf
     'Đồng hồ nữ': 'https://www.lazada.vn/dong-ho-nu-thoi-trang/?spm=a2o4n.home.cate_8.7.37df3bdcnLOFDe',
     'Gọng Kính Nữ': 'https://www.lazada.vn/kinh-deo-mat-nu/?spm=a2o4n.home.cate_8.8.37df3bdcnLOFDe',
     'Kính Mát Nữ': 'https://www.lazada.vn/kinh-mat-danh-cho-nu/?spm=a2o4n.home.cate_8.9.37df3bdcnLOFDe'
@@ -41,20 +42,25 @@ class LazadaScraper(CommonScraper):
             # scrape products link
             counter = 0
             while True:
+                has_product = False
                 # wait for products to be available, if not then check for popup
                 for i in range(self.retry_num):
                     try:
                         logger.info("Checking if the products are available on the page")
                         WebDriverWait(self.driver, self.wait_timeout).until(
                             ec.visibility_of_element_located((By.CLASS_NAME, "Bm3ON")))
+                        has_product = True
                         break
                     except TimeoutException:
-                        logger.info("Can find the products after " + str(self.wait_timeout) + " seconds")
+                        logger.info("Can't find the products after " + str(self.wait_timeout) + " seconds")
                         self.check_popup()
                         logger.info("Finished checking for popup")
                         self.driver.refresh()
                         logger.info("Refreshed the page")
-
+                # stop scraping this category if there's no product
+                if not has_product:
+                    logger.info("No products are available from the category: " + category + ", stop scraping")
+                    break
                 counter += 1
                 logger.info('Scrape counter: ' + str(counter))
                 curr_page_num = self.driver.find_element(By.CLASS_NAME, 'ant-pagination-item-active').get_attribute(
@@ -102,12 +108,9 @@ class LazadaScraper(CommonScraper):
                 rng = uniform(0.9, 1.1)
                 actions.move_by_offset(v + a * rng * t, rng * 5).perform()
             return True
-        except NoSuchElementException:
-            logging.info("Popup not found")
+        except TimeoutException:
+            logger.info("Popup not found")
             return False
         except MoveTargetOutOfBoundsException:
             logger.info("Finished dragging")
             return True
-
-    # def __del__(self):
-    #     self.driver.quit()
