@@ -14,4 +14,6 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 if __name__ == '__main__':
-    LazadaScraper(num_page=10).get_product_urls()
+    scraper = LazadaScraper(num_page=10)
+    # scraper.get_product_urls()
+    scraper.get_product_info()

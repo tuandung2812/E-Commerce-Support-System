@@ -5,7 +5,7 @@ from random import uniform
 
 from bs4 import BeautifulSoup
 from selenium.common import TimeoutException, ElementClickInterceptedException, \
-    MoveTargetOutOfBoundsException, NoSuchElementException
+    MoveTargetOutOfBoundsException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 class LazadaScraper(CommonScraper):
-    def __init__(self, num_page: int = 10, data_dir: str = '../data/lazada', wait_timeout: int = 5, retry_num: int = 3):
-        super().__init__(num_page, data_dir, wait_timeout, retry_num)
+    def __init__(self, num_page: int = 10, data_dir: str = '../data/lazada', wait_timeout: int = 5, retry_num: int = 3, restart_num = 10):
+        super().__init__(num_page, data_dir, wait_timeout, retry_num, restart_num)
 
     def get_product_urls(self):
         for category, category_url in categories.items():
@@ -90,47 +90,37 @@ class LazadaScraper(CommonScraper):
                 except ElementClickInterceptedException:
                     self.check_popup()
 
-    def get_product_info(self, scroll_retry=10):
+    def get_product_info(self, scroll_retry=3):
         for category in os.listdir(self.data_dir):
             logger.info('Scraping category: ' + category)
             category_path = os.path.join(self.data_dir, category)
             url_path = os.path.join(category_path, 'url.txt')
             with open(url_path) as urls:
-                for url in urls:
+                for i, url in enumerate(urls):
                     url = url.strip()
-                    logger.info('Scraping url: ' + url)
+                    logger.info(f'Scraping url number {i}: {url}')
+                    if i != 0 and i % self.restart_num == 0:
+                        logger.info('Restart number reached, restarting driver')
+                        self.restart_driver()
                     self.driver.get(url)
 
                     result = {}
 
                     # scroll down to load product description
-                    self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME)
-                    # logger.info('Scrolling to find product description')
-                    # for counter in range(scroll_retry):
-                    #     self.driver.execute_script("window.scrollBy(0,500)")
-                    #     try:
-                    #         self.driver.find_element(By.CLASS_NAME, 'pdp-product-desc')
-                    #         logger.info('Product description found')
-                    #         break
-                    #     except NoSuchElementException:
-                    #         if counter == scroll_retry - 1:
-                    #             logger.info('Cannot find product description')
-                    #         continue
+                    logger.info('Scrolling to find average rating')
+                    found_desc = self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME)
+                    if not found_desc:
+                        logger.info('Product description not found')
 
                     # scroll down to load average rating
-                    # logger.info('Scrolling to find average rating')
-                    # for counter in range(scroll_retry):
-                    #     self.driver.execute_script("window.scrollBy(0,500)")
-                    #     try:
-                    #         avg_rating = self.driver.find_element(By.CLASS_NAME, 'score-average').text
-                    #         logger.info('Average rating Found')
-                    #         result['avg_rating'] = avg_rating
-                    #         logger.info('Average rating extracted')
-                    #         break
-                    #     except NoSuchElementException:
-                    #         if counter == scroll_retry - 1:
-                    #             logger.info('Cannot find average rating')
-                    #         continue
+                    logger.info('Scrolling to find average rating')
+                    avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, 1000)
+                    if avg_rating:
+                        avg_rating = avg_rating.text
+                        result['avg_rating'] = avg_rating
+                        logger.info('Average rating extracted')
+                    else:
+                        logger.info('Average rating not found')
 
                     # create soup after average score is loaded
                     soup = BeautifulSoup(self.driver.page_source, features="lxml")
@@ -150,16 +140,20 @@ class LazadaScraper(CommonScraper):
                     attrs = {}
                     for attr in soup.find_all(class_='sku-prop-selection'):
                         attr_name = attr.find('h6').text
-                        if attr_name == 'Size':
-                            attr_value = attr.find(class_='sku-variable-size-selected').text
+
+                        # handle kích cỡ
+                        size = attr.find(class_='sku-tabpath-single')
+                        if size:
+                            if size.text.strip() == 'Int':
+                                attr_value = attr.find(class_='sku-variable-size-selected').text
                         else:
                             attr_value = attr.find(class_='sku-name').text
                         attrs[attr_name] = attr_value
                     if attrs:
                         logger.info('Product\'s attributes extracted')
 
-                    product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
-                    if product_desc:
+                    if found_desc:
+                        product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
                         logger.info('Product description extracted')
 
                     result['product_name'] = product_name
@@ -171,14 +165,31 @@ class LazadaScraper(CommonScraper):
                     with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
                         json.dump(result, f, ensure_ascii=False)
                         f.write('\n')
-                    break
             break
 
     def _scroll_to_find_element(self, scroll_retry, element_name, by, scroll_by=500):
-        self.driver.execute_script("window.scrollTo(0,0)")
+        try:
+            self.driver.execute_script("window.scrollTo(0,0)")
+        except TimeoutException:
+            logger.info('Failed to scroll page to the beginning')
+
         logger.info('Trying to find element: ' + element_name)
         for counter in range(scroll_retry):
-            self.driver.execute_script(f"window.scrollBy(0,{scroll_by})")
+            logger.info(f'Scrolling attempt: {counter}')
+            try:
+                # scroll up and down before
+                if counter != 0:
+                    # self.check_popup()
+                    half_scroll = scroll_by / 2
+                    self.driver.execute_script(f"window.scrollBy(0,{-half_scroll})")
+                    self.driver.execute_script(f"window.scrollBy(0,{half_scroll})")
+
+                # now actually scroll down
+                self.driver.execute_script(f"window.scrollBy(0,{scroll_by})")
+            except TimeoutException:
+                logger.info('Failed to scroll page')
+                continue
+
             try:
                 WebDriverWait(self.driver, self.wait_timeout).until(ec.visibility_of_element_located((by, element_name)))
                 element = self.driver.find_element(by, element_name)
@@ -187,7 +198,6 @@ class LazadaScraper(CommonScraper):
             except TimeoutException:
                 if counter == scroll_retry - 1:
                     logger.info('Cannot find element')
-                continue
 
     def _extract_all_product_type_link(self):
         pass
