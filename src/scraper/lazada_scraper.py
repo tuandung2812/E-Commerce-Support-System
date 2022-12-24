@@ -1,14 +1,16 @@
+import json
 import logging
 import os
 from random import uniform
 
 from bs4 import BeautifulSoup
-from selenium.common import TimeoutException, NoSuchElementException, ElementClickInterceptedException, \
-    MoveTargetOutOfBoundsException
+from selenium.common import TimeoutException, ElementClickInterceptedException, \
+    MoveTargetOutOfBoundsException, NoSuchElementException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
+
 from .common_scraper import CommonScraper
 
 categories = {
@@ -71,6 +73,7 @@ class LazadaScraper(CommonScraper):
                 logger.info('Number of products in page: ' + str(len(products)))
                 for product in products:
                     url = product.find('a')['href'][2:]
+                    url = 'https://' + url
                     self.write_to_file(url, os.path.join(category, 'url.txt'))
                 logger.info("Finished scraping urls from page " + str(counter))
 
@@ -87,7 +90,106 @@ class LazadaScraper(CommonScraper):
                 except ElementClickInterceptedException:
                     self.check_popup()
 
-    def get_product_info(self):
+    def get_product_info(self, scroll_retry=10):
+        for category in os.listdir(self.data_dir):
+            logger.info('Scraping category: ' + category)
+            category_path = os.path.join(self.data_dir, category)
+            url_path = os.path.join(category_path, 'url.txt')
+            with open(url_path) as urls:
+                for url in urls:
+                    url = url.strip()
+                    logger.info('Scraping url: ' + url)
+                    self.driver.get(url)
+
+                    result = {}
+
+                    # scroll down to load product description
+                    self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME)
+                    # logger.info('Scrolling to find product description')
+                    # for counter in range(scroll_retry):
+                    #     self.driver.execute_script("window.scrollBy(0,500)")
+                    #     try:
+                    #         self.driver.find_element(By.CLASS_NAME, 'pdp-product-desc')
+                    #         logger.info('Product description found')
+                    #         break
+                    #     except NoSuchElementException:
+                    #         if counter == scroll_retry - 1:
+                    #             logger.info('Cannot find product description')
+                    #         continue
+
+                    # scroll down to load average rating
+                    # logger.info('Scrolling to find average rating')
+                    # for counter in range(scroll_retry):
+                    #     self.driver.execute_script("window.scrollBy(0,500)")
+                    #     try:
+                    #         avg_rating = self.driver.find_element(By.CLASS_NAME, 'score-average').text
+                    #         logger.info('Average rating Found')
+                    #         result['avg_rating'] = avg_rating
+                    #         logger.info('Average rating extracted')
+                    #         break
+                    #     except NoSuchElementException:
+                    #         if counter == scroll_retry - 1:
+                    #             logger.info('Cannot find average rating')
+                    #         continue
+
+                    # create soup after average score is loaded
+                    soup = BeautifulSoup(self.driver.page_source, features="lxml")
+
+                    product_name = soup.find(class_='pdp-mod-product-badge-title').text
+                    if product_name:
+                        logger.info('Product name extracted')
+
+                    brand = soup.find(class_='pdp-product-brand__brand-link').text
+                    if brand:
+                        logger.info('Brand name extracted')
+
+                    num_review = soup.find(class_='pdp-review-summary__link').text
+                    if num_review:
+                        logger.info('Number of reviews extracted')
+
+                    attrs = {}
+                    for attr in soup.find_all(class_='sku-prop-selection'):
+                        attr_name = attr.find('h6').text
+                        if attr_name == 'Size':
+                            attr_value = attr.find(class_='sku-variable-size-selected').text
+                        else:
+                            attr_value = attr.find(class_='sku-name').text
+                        attrs[attr_name] = attr_value
+                    if attrs:
+                        logger.info('Product\'s attributes extracted')
+
+                    product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
+                    if product_desc:
+                        logger.info('Product description extracted')
+
+                    result['product_name'] = product_name
+                    result['brand_name'] = brand
+                    result['num_review'] = num_review
+                    result['attrs'] = attrs
+                    result['product_desc'] = product_desc
+
+                    with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
+                        json.dump(result, f, ensure_ascii=False)
+                        f.write('\n')
+                    break
+            break
+
+    def _scroll_to_find_element(self, scroll_retry, element_name, by, scroll_by=500):
+        self.driver.execute_script("window.scrollTo(0,0)")
+        logger.info('Trying to find element: ' + element_name)
+        for counter in range(scroll_retry):
+            self.driver.execute_script(f"window.scrollBy(0,{scroll_by})")
+            try:
+                WebDriverWait(self.driver, self.wait_timeout).until(ec.visibility_of_element_located((by, element_name)))
+                element = self.driver.find_element(by, element_name)
+                logger.info('Element Found')
+                return element
+            except TimeoutException:
+                if counter == scroll_retry - 1:
+                    logger.info('Cannot find element')
+                continue
+
+    def _extract_all_product_type_link(self):
         pass
 
     def check_popup(self):
