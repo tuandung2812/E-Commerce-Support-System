@@ -22,6 +22,7 @@ class CommonScraper(ABC):
         options.set_capability("pageLoadStrategy", "none")
         driver = uc.Chrome(options=options)
         driver.set_script_timeout(10)
+        driver.set_page_load_timeout(20)
         return driver
 
     def write_to_file(self, text, file_name):
