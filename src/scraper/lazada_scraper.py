@@ -5,7 +5,7 @@ from random import uniform
 
 from bs4 import BeautifulSoup
 from selenium.common import TimeoutException, ElementClickInterceptedException, \
-    MoveTargetOutOfBoundsException
+    MoveTargetOutOfBoundsException, StaleElementReferenceException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 class LazadaScraper(CommonScraper):
-    def __init__(self, num_page: int = 10, data_dir: str = '../data/lazada', wait_timeout: int = 5, retry_num: int = 3, restart_num = 10):
+    def __init__(self, num_page=10, data_dir='../data/lazada', wait_timeout=5, retry_num=3,
+                 restart_num=10):
         super().__init__(num_page, data_dir, wait_timeout, retry_num, restart_num)
 
     def get_product_urls(self):
@@ -104,69 +105,99 @@ class LazadaScraper(CommonScraper):
                         self.restart_driver()
                     self.driver.get(url)
 
-                    result = {}
+                    try:
+                        # get all product types
+                        type_arr = []
+                        WebDriverWait(self.driver, self.wait_timeout).until(
+                            ec.visibility_of_element_located((By.CLASS_NAME, 'sku-prop-content')))
+                        for retry in range(self.retry_num):
+                            try:
+                                for ele in self.driver.find_elements(By.CLASS_NAME, 'sku-prop-content'):
+                                    type_arr.append(ele.find_elements(By.XPATH, './*'))
+                                logger.info(f'{len(type_arr)} types found, iterating through all of them')
+                                self._iterate_all_product_type(0, type_arr, scroll_retry=scroll_retry,
+                                                               url=url, category_path=category_path)
+                                break
+                            except StaleElementReferenceException:
+                                logger.info('Cannot get product types, retrying')
+                            if retry == self.retry_num - 1:
+                                logger.info(f'Cannot get product types after {self.retry_num} attempts')
+                                self._get_product_info_helper(scroll_retry, url, category_path)
+                    except TimeoutException:
+                        logger.info('Product has no type, scraping directly')
+                        self._get_product_info_helper(scroll_retry, url, category_path)
 
-                    # scroll down to load product description
-                    logger.info('Scrolling to find average rating')
-                    found_desc = self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME)
-                    if not found_desc:
-                        logger.info('Product description not found')
+                    # except StaleElementReferenceException:
 
-                    # scroll down to load average rating
-                    logger.info('Scrolling to find average rating')
-                    avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, 1000)
-                    if avg_rating:
-                        avg_rating = avg_rating.text
-                        result['avg_rating'] = avg_rating
-                        logger.info('Average rating extracted')
-                    else:
-                        logger.info('Average rating not found')
-
-                    # create soup after dynamic elements are loaded
-                    soup = BeautifulSoup(self.driver.page_source, features="lxml")
-
-                    product_name = soup.find(class_='pdp-mod-product-badge-title').text
-                    if product_name:
-                        logger.info('Product name extracted')
-
-                    brand = soup.find(class_='pdp-product-brand__brand-link').text
-                    if brand:
-                        logger.info('Brand name extracted')
-
-                    num_review = soup.find(class_='pdp-review-summary__link').text
-                    if num_review:
-                        logger.info('Number of reviews extracted')
-
-                    attrs = {}
-                    for attr in soup.find_all(class_='sku-prop-selection'):
-                        attr_name = attr.find('h6').text
-
-                        # handle kích cỡ since it's different from the others for some reason
-                        size = attr.find(class_='sku-tabpath-single')
-                        if size:
-                            if size.text.strip() == 'Int':
-                                attr_value = attr.find(class_='sku-variable-size-selected').text
-                        else:
-                            attr_value = attr.find(class_='sku-name').text
-                        attrs[attr_name] = attr_value
-                    if attrs:
-                        logger.info('Product\'s attributes extracted')
-
-                    if found_desc:
-                        product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
-                        logger.info('Product description extracted')
-
-                    result['product_name'] = product_name
-                    result['brand_name'] = brand
-                    result['num_review'] = num_review
-                    result['attrs'] = attrs
-                    result['product_desc'] = product_desc
-                    result['url'] = url
-
-                    with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
-                        json.dump(result, f, ensure_ascii=False)
-                        f.write('\n')
+                    if i == 10:
+                        break
             break
+
+    def _get_product_info_helper(self, scroll_retry, curr_url, category_path):
+        result = {}
+
+        # scroll down to load product description
+        logger.info('Scrolling to find average rating')
+        found_desc = self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME, curr_url)
+        if not found_desc:
+            logger.info('Product description not found')
+
+        # scroll down to load average rating
+        logger.info('Scrolling to find average rating')
+        avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, 1000)
+        if avg_rating:
+            avg_rating = avg_rating.text
+            result['avg_rating'] = avg_rating
+            logger.info('Average rating extracted')
+        else:
+            logger.info('Average rating not found')
+
+        # create soup after dynamic elements are loaded
+        soup = BeautifulSoup(self.driver.page_source, features="lxml")
+
+        product_name = soup.find(class_='pdp-mod-product-badge-title').text
+        if product_name:
+            logger.info('Product name extracted')
+
+        brand = soup.find(class_='pdp-product-brand__brand-link').text
+        if brand:
+            logger.info('Brand name extracted')
+
+        num_review = soup.find(class_='pdp-review-summary__link').text
+        if num_review:
+            logger.info('Number of reviews extracted')
+
+        attrs = {}
+        for attr in soup.find_all(class_='sku-prop-selection'):
+            attr_name = attr.find('h6').text
+
+            # handle kích cỡ since it's different from the others for some reason
+            size = attr.find(class_='sku-tabpath-single')
+            attr_value = None
+            if size:
+                if size.text.strip() == 'Int':
+                    attr_value = attr.find(class_='sku-variable-size-selected').text
+            else:
+                attr_value = attr.find(class_='sku-name').text
+            attrs[attr_name] = attr_value
+        if attrs:
+            logger.info('Product\'s attributes extracted')
+
+        product_desc = None
+        if found_desc:
+            product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
+            logger.info('Product description extracted')
+
+        result['product_name'] = product_name
+        result['brand_name'] = brand
+        result['num_review'] = num_review
+        result['attrs'] = attrs
+        result['product_desc'] = product_desc
+        result['url'] = curr_url
+
+        with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
+            json.dump(result, f, ensure_ascii=False)
+            f.write('\n')
 
     def _scroll_to_find_element(self, scroll_retry, element_name, by, curr_url, scroll_by=500):
         try:
@@ -198,7 +229,8 @@ class LazadaScraper(CommonScraper):
                 continue
 
             try:
-                WebDriverWait(self.driver, self.wait_timeout).until(ec.visibility_of_element_located((by, element_name)))
+                WebDriverWait(self.driver, self.wait_timeout).until(
+                    ec.visibility_of_element_located((by, element_name)))
                 element = self.driver.find_element(by, element_name)
                 logger.info('Element Found')
                 return element
@@ -206,8 +238,36 @@ class LazadaScraper(CommonScraper):
                 if counter == scroll_retry - 1:
                     logger.info('Cannot find element')
 
-    def _extract_all_product_type_link(self):
-        pass
+    def _iterate_all_product_type(self, type_index, type_arr, **kwargs):
+        if type_index == len(type_arr):
+            self._get_product_info_helper(kwargs['scroll_retry'], kwargs['url'], kwargs['category_path'])
+            return
+
+        for element in type_arr[type_index]:
+            try:
+                self.driver.execute_script("window.scrollTo(0,0)")
+            except TimeoutException:
+                logger.info('Failed to scroll page to the beginning')
+                logger.info('Restarting driver')
+                self.restart_driver()
+                self.driver.get(kwargs['url'])
+
+            logger.info('Clicking out of notification')
+            actions = ActionChains(self.driver)
+            actions.move_by_offset(1, 1).click().perform()
+            try:
+                WebDriverWait(self.driver, self.wait_timeout).until(ec.element_to_be_clickable(element))
+                element.click()
+                self._iterate_all_product_type(type_index + 1, type_arr, scroll_retry=kwargs['scroll_retry'],
+                                               url=kwargs['url'], category_path=kwargs['category_path'])
+            except StaleElementReferenceException:
+                logger.info('Element not attached to the page, renewing all elements')
+                for row, attr in enumerate(self.driver.find_elements(By.CLASS_NAME, 'sku-prop-content')):
+                    for col, ele in enumerate(attr.find_elements(By.XPATH, './*')):
+                        type_arr[row][col] = ele
+            except TimeoutException:
+                logger.info(f'Element not clickable after waiting for {self.wait_timeout} seconds')
+
 
     def check_popup(self):
         try:
