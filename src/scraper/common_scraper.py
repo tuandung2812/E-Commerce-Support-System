@@ -19,7 +19,7 @@ class CommonScraper(ABC):
 
     def start_driver(self):
         options = uc.ChromeOptions()
-        options.set_capability("pageLoadStrategy", "none")
+        options.set_capability("pageLoadStrategy", "eager")
         driver = uc.Chrome(options=options)
         driver.set_script_timeout(10)
         driver.set_page_load_timeout(20)
@@ -43,5 +43,5 @@ class CommonScraper(ABC):
         self.driver = self.start_driver()
         logger.info('Driver restarted')
 
-    def __del__(self):
-        self.driver.quit()
+    # def __del__(self):
+    #     self.driver.quit()
