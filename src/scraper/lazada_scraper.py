@@ -161,6 +161,7 @@ class LazadaScraper(CommonScraper):
                     result['num_review'] = num_review
                     result['attrs'] = attrs
                     result['product_desc'] = product_desc
+                    result['url'] = url
 
                     with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
                         json.dump(result, f, ensure_ascii=False)
