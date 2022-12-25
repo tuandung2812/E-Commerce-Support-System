@@ -122,7 +122,7 @@ class LazadaScraper(CommonScraper):
                     else:
                         logger.info('Average rating not found')
 
-                    # create soup after average score is loaded
+                    # create soup after dynamic elements are loaded
                     soup = BeautifulSoup(self.driver.page_source, features="lxml")
 
                     product_name = soup.find(class_='pdp-mod-product-badge-title').text
@@ -141,7 +141,7 @@ class LazadaScraper(CommonScraper):
                     for attr in soup.find_all(class_='sku-prop-selection'):
                         attr_name = attr.find('h6').text
 
-                        # handle kích cỡ
+                        # handle kích cỡ since it's different from the others for some reason
                         size = attr.find(class_='sku-tabpath-single')
                         if size:
                             if size.text.strip() == 'Int':
@@ -167,11 +167,14 @@ class LazadaScraper(CommonScraper):
                         f.write('\n')
             break
 
-    def _scroll_to_find_element(self, scroll_retry, element_name, by, scroll_by=500):
+    def _scroll_to_find_element(self, scroll_retry, element_name, by, curr_url, scroll_by=500):
         try:
             self.driver.execute_script("window.scrollTo(0,0)")
         except TimeoutException:
             logger.info('Failed to scroll page to the beginning')
+            logger.info('Restarting driver')
+            self.restart_driver()
+            self.driver.get(curr_url)
 
         logger.info('Trying to find element: ' + element_name)
         for counter in range(scroll_retry):
@@ -188,6 +191,9 @@ class LazadaScraper(CommonScraper):
                 self.driver.execute_script(f"window.scrollBy(0,{scroll_by})")
             except TimeoutException:
                 logger.info('Failed to scroll page')
+                logger.info('Restarting driver')
+                self.restart_driver()
+                self.driver.get(curr_url)
                 continue
 
             try:
