@@ -1,0 +1,6 @@
+/data/
+/test.ipynb
+/geckodriver.log
+__pycache__/
+/.idea/
+/src/geckodriver.log
