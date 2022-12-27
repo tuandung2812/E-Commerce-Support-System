@@ -49,6 +49,7 @@ class ShopeeScraper(CommonScraper):
                         ec.visibility_of_element_located((By.CLASS_NAME, "shopee-search-item-result__item")))
                     for i in range(7):
                         self.driver.execute_script("window.scrollBy(0,500)")
+
                     soup = BeautifulSoup(self.driver.page_source, features="lxml")
                     product_list = soup.find_all(class_='shopee-search-item-result__item')
                     product_list_with_url = soup \
@@ -56,23 +57,21 @@ class ShopeeScraper(CommonScraper):
                         .find_all('a', href=True)
 
                     if product_num == len(product_list):
-                        logger.info('Number of products remain the same after scrolling again, stopping scrolling')
+                        logger.info('Number of products remain the same after scrolling again, extracting product url')
+                        self._get_product_urls(product_list, category)
                         break
 
                     product_num = len(product_list)  # for comparing with the next retry
-                    if product_num == 60 and len(product_list_with_url) == len(product_list):
-                        logger.info('All 60 products are loaded, extracting product url')
-                        break
+                    if product_num == 60:
+                        if len(product_list_with_url) == len(product_list):
+                            logger.info('All 60 products are loaded, extracting product url')
+                            self._get_product_urls(product_list, category)
+                            break
                     elif retry == self.retry_num - 1:
                         logger.info(f'{product_num} products are found after retrying {self.retry_num} times')
                     else:
                         logger.info(f'Only {product_num} products are loaded, rescrolling')
 
-                soup = BeautifulSoup(self.driver.page_source, features="lxml")
-                product_list = soup.find_all(class_='shopee-search-item-result__item')
-                for product in product_list:
-                    product_url = 'https://shopee.vn' + product.a['href']
-                    self.write_to_file(product_url, os.path.join(category, 'url.txt'))
                 counter += 1
                 logger.info("Finished scraping urls from page " + str(counter))
 
@@ -83,6 +82,11 @@ class ShopeeScraper(CommonScraper):
                 logger.info('Going to the next page')
                 next_page_button = self.driver.find_element(by=By.CLASS_NAME, value="shopee-icon-button--right")
                 next_page_button.click()
+
+    def _get_product_urls(self, product_list, category):
+        for product in product_list:
+            product_url = 'https://shopee.vn' + product.a['href']
+            self.write_to_file(product_url, os.path.join(category, 'url.txt'))
 
     def get_product_info(self):
         pass
