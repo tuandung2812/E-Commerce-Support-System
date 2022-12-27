@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class CommonScraper(ABC):
 
-    def __init__(self, num_page, data_dir, wait_timeout, retry_num,  restart_num):
+    def __init__(self, num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num):
         self.restart_num = restart_num
-        self.num_page = num_page
+        self.num_page_to_scrape = num_page_to_scrape
         self.data_dir = data_dir
         self.wait_timeout = wait_timeout
         self.retry_num = retry_num
@@ -23,6 +23,7 @@ class CommonScraper(ABC):
         driver = uc.Chrome(options=options)
         driver.set_script_timeout(10)
         driver.set_page_load_timeout(20)
+        driver.maximize_window()
         return driver
 
     def write_to_file(self, text, file_name):

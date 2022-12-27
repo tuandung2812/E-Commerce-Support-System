@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
-from .common_scraper import CommonScraper
+from src.scraper.common_scraper import CommonScraper
 
 categories = {
     'Trang phục nữ': 'https://www.lazada.vn/trang-phuc-nu/?spm=a2o4n.home.cate_8.1.19053bdc0ehtvZ',
@@ -30,9 +30,11 @@ logger = logging.getLogger(__name__)
 
 
 class LazadaScraper(CommonScraper):
-    def __init__(self, num_page=10, data_dir='../data/lazada', wait_timeout=5, retry_num=3,
+    def __init__(self, num_page_to_scrape=10, data_dir='../data/lazada', wait_timeout=5, retry_num=3,
                  restart_num=10):
-        super().__init__(num_page, data_dir, wait_timeout, retry_num, restart_num)
+        if not os.path.exists(data_dir):
+            os.mkdir(data_dir)
+        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num)
 
     def get_product_urls(self):
         for category, category_url in categories.items():
@@ -65,7 +67,6 @@ class LazadaScraper(CommonScraper):
                     logger.info("No products are available from the category: " + category + ", stop scraping")
                     break
                 counter += 1
-                logger.info('Scrape counter: ' + str(counter))
                 curr_page_num = self.driver.find_element(By.CLASS_NAME, 'ant-pagination-item-active').get_attribute(
                     'title')
                 logger.info('Current page ' + str(curr_page_num))
@@ -83,7 +84,11 @@ class LazadaScraper(CommonScraper):
                 next_page_button = self.driver.find_element(by=By.CSS_SELECTOR, value=".ant-pagination-next > "
                                                                                       "button:nth-child(1)")
                 is_last_page = not next_page_button.is_enabled()
-                if counter == self.num_page or is_last_page:
+                if counter == self.num_page_to_scrape:
+                    logger.info(f'Reached maximum number of pages to scrape in category: {category}')
+                    break
+                elif is_last_page:
+                    logger.info(f'Reached the last page of category: {category}')
                     break
                 try:
                     next_page_button.click()
@@ -267,7 +272,6 @@ class LazadaScraper(CommonScraper):
                         type_arr[row][col] = ele
             except TimeoutException:
                 logger.info(f'Element not clickable after waiting for {self.wait_timeout} seconds')
-
 
     def check_popup(self):
         try:
