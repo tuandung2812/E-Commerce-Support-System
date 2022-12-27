@@ -1,5 +1,6 @@
 /data/
-/test.ipynb
+/test_lazada.ipynb
+/test_shopee.ipynb
 /geckodriver.log
 __pycache__/
 /.idea/
