@@ -172,6 +172,10 @@ class LazadaScraper(CommonScraper):
         if num_review:
             logger.info('Number of reviews extracted')
 
+        price = soup.find(class_='pdp-price pdp-price_type_normal pdp-price_color_orange pdp-price_size_xl').text
+        if price:
+            logger.info('Price extracted')
+
         attrs = {}
         for attr in soup.find_all(class_='sku-prop-selection'):
             attr_name = attr.find('h6').text
@@ -194,6 +198,7 @@ class LazadaScraper(CommonScraper):
             logger.info('Product description extracted')
 
         result['product_name'] = product_name
+        result['price'] = price
         result['brand_name'] = brand
         result['num_review'] = num_review
         result['attrs'] = attrs
