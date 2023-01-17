@@ -19,7 +19,7 @@ class CommonScraper(ABC):
 
     def start_driver(self):
         options = uc.ChromeOptions()
-        options.set_capability("pageLoadStrategy", "eager")
+        options.set_capability("pageLoadStrategy", "none")
         driver = uc.Chrome(options=options)
         driver.set_script_timeout(10)
         driver.set_page_load_timeout(20)
