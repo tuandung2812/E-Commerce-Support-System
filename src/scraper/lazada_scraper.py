@@ -108,7 +108,21 @@ class LazadaScraper(CommonScraper):
                     if i != 0 and i % self.restart_num == 0:
                         logger.info('Restart number reached, restarting driver')
                         self.restart_driver()
-                    self.driver.get(url)
+
+                    page_loaded = False
+                    for retry in range(self.retry_num):
+                        try:
+                            self.driver.get(url)
+                            page_loaded = True
+                            break
+                        except TimeoutException:
+                            if retry == self.retry_num - 1:
+                                logger.error(f'Cannot load the website after {self.retry_num} retries')
+                            else:
+                                logger.error("Cannot load the website, retrying")
+
+                    if not page_loaded:
+                        continue
 
                     try:
                         # get all product types
@@ -123,91 +137,95 @@ class LazadaScraper(CommonScraper):
                                 self._iterate_all_product_type(0, type_arr, scroll_retry=scroll_retry,
                                                                url=url, category_path=category_path)
                                 break
+                            # except IndexError as e:
+                            #     logger.error(e)
+                            #     break
                             except StaleElementReferenceException:
-                                logger.info('Cannot get product types, retrying')
+                                logger.error('Cannot get product types, retrying')
+                            except Exception as e:
+                                logger.error(e)
+                                break
                             if retry == self.retry_num - 1:
                                 logger.info(f'Cannot get product types after {self.retry_num} attempts')
                                 self._get_product_info_helper(scroll_retry, url, category_path)
                     except TimeoutException:
                         logger.info('Product has no type, scraping directly')
                         self._get_product_info_helper(scroll_retry, url, category_path)
-
-                    # except StaleElementReferenceException:
-
-                    if i == 10:
-                        break
             break
 
     def _get_product_info_helper(self, scroll_retry, curr_url, category_path):
-        result = {}
+        try:
+            result = {}
 
-        # scroll down to load product description
-        logger.info('Scrolling to find average rating')
-        found_desc = self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME, curr_url)
-        if not found_desc:
-            logger.info('Product description not found')
+            # scroll down to load product description
+            logger.info('Scrolling to find average rating')
+            found_desc = self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME, curr_url)
+            if not found_desc:
+                logger.info('Product description not found')
 
-        # scroll down to load average rating
-        logger.info('Scrolling to find average rating')
-        avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, 1000)
-        if avg_rating:
-            avg_rating = avg_rating.text
-            result['avg_rating'] = avg_rating
-            logger.info('Average rating extracted')
-        else:
-            logger.info('Average rating not found')
-
-        # create soup after dynamic elements are loaded
-        soup = BeautifulSoup(self.driver.page_source, features="lxml")
-
-        product_name = soup.find(class_='pdp-mod-product-badge-title').text
-        if product_name:
-            logger.info('Product name extracted')
-
-        brand = soup.find(class_='pdp-product-brand__brand-link').text
-        if brand:
-            logger.info('Brand name extracted')
-
-        num_review = soup.find(class_='pdp-review-summary__link').text
-        if num_review:
-            logger.info('Number of reviews extracted')
-
-        price = soup.find(class_='pdp-price pdp-price_type_normal pdp-price_color_orange pdp-price_size_xl').text
-        if price:
-            logger.info('Price extracted')
-
-        attrs = {}
-        for attr in soup.find_all(class_='sku-prop-selection'):
-            attr_name = attr.find('h6').text
-
-            # handle kích cỡ since it's different from the others for some reason
-            size = attr.find(class_='sku-tabpath-single')
-            attr_value = None
-            if size:
-                if size.text.strip() == 'Int':
-                    attr_value = attr.find(class_='sku-variable-size-selected').text
+            # scroll down to load average rating
+            logger.info('Scrolling to find average rating')
+            avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, 1000)
+            if avg_rating:
+                avg_rating = avg_rating.text
+                result['avg_rating'] = avg_rating
+                logger.info('Average rating extracted')
             else:
-                attr_value = attr.find(class_='sku-name').text
-            attrs[attr_name] = attr_value
-        if attrs:
-            logger.info('Product\'s attributes extracted')
+                logger.info('Average rating not found')
 
-        product_desc = None
-        if found_desc:
-            product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
-            logger.info('Product description extracted')
+            # create soup after dynamic elements are loaded
+            soup = BeautifulSoup(self.driver.page_source, features="lxml")
 
-        result['product_name'] = product_name
-        result['price'] = price
-        result['brand_name'] = brand
-        result['num_review'] = num_review
-        result['attrs'] = attrs
-        result['product_desc'] = product_desc
-        result['url'] = curr_url
+            product_name = soup.find(class_='pdp-mod-product-badge-title').text
+            if product_name:
+                logger.info('Product name extracted')
 
-        with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
-            json.dump(result, f, ensure_ascii=False)
-            f.write('\n')
+            brand = soup.find(class_='pdp-product-brand__brand-link').text
+            if brand:
+                logger.info('Brand name extracted')
+
+            num_review = soup.find(class_='pdp-review-summary__link').text
+            if num_review:
+                logger.info('Number of reviews extracted')
+
+            price = soup.find(class_='pdp-price pdp-price_type_normal pdp-price_color_orange pdp-price_size_xl').text
+            if price:
+                logger.info('Price extracted')
+
+            attrs = {}
+            for attr in soup.find_all(class_='sku-prop-selection'):
+                attr_name = attr.find('h6').text
+
+                # handle kích cỡ since it's different from the others for some reason
+                size = attr.find(class_='sku-tabpath-single')
+                attr_value = None
+                if size:
+                    if size.text.strip() == 'Int':
+                        attr_value = attr.find(class_='sku-variable-size-selected').text
+                else:
+                    attr_value = attr.find(class_='sku-name').text
+                attrs[attr_name] = attr_value
+            if attrs:
+                logger.info('Product\'s attributes extracted')
+
+            product_desc = None
+            if found_desc:
+                product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
+                logger.info('Product description extracted')
+
+            result['product_name'] = product_name
+            result['price'] = price
+            result['brand_name'] = brand
+            result['num_review'] = num_review
+            result['attrs'] = attrs
+            result['product_desc'] = product_desc
+            result['url'] = curr_url
+
+            with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
+                json.dump(result, f, ensure_ascii=False)
+                f.write('\n')
+        except AttributeError as e:
+            logger.error(e)
 
     def _scroll_to_find_element(self, scroll_retry, element_name, by, curr_url, scroll_by=500):
         try:
