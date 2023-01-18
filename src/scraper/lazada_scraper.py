@@ -13,19 +13,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from src.scraper.common_scraper import CommonScraper
 
-categories = {
-    'Trang phục nữ': 'https://www.lazada.vn/trang-phuc-nu/?spm=a2o4n.home.cate_8.1.19053bdc0ehtvZ',
-    'Giày nữ': 'https://www.lazada.vn/giay-nu-thoi-trang/?spm=a2o4n.home.cate_8.2.19053bdcxG3gU2',
-    'Đồ ngủ và nội y': 'https://www.lazada.vn/do-ngu-noi-y/?spm=a2o4n.home.cate_8.3.37df3bdcnLOFDe',
-    'Phụ kiện nữ': 'https://www.lazada.vn/phu-kien-cho-nu/?spm=a2o4n.home.cate_8.4.37df3bdcSV9RDy',
-    'Túi xách nữ': 'https://www.lazada.vn/tui-cho-nu/?spm=a2o4n.home.cate_8.5.37df3bdcnLOFDe',
-    'Trang sức nữ': 'https://www.lazada.vn/trang-suc-nu/?page=1&sort=pricedesc&spm=a2o4n.home.cate_8.6.37df3bdcnLOFDe',
-    # no product wtf
-    'Đồng hồ nữ': 'https://www.lazada.vn/dong-ho-nu-thoi-trang/?spm=a2o4n.home.cate_8.7.37df3bdcnLOFDe',
-    'Gọng Kính Nữ': 'https://www.lazada.vn/kinh-deo-mat-nu/?spm=a2o4n.home.cate_8.8.37df3bdcnLOFDe',
-    'Kính Mát Nữ': 'https://www.lazada.vn/kinh-mat-danh-cho-nu/?spm=a2o4n.home.cate_8.9.37df3bdcnLOFDe'
-}
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,121 +24,143 @@ class LazadaScraper(CommonScraper):
         super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num)
 
     def get_product_urls(self):
-        for category, category_url in categories.items():
-            logger.info("Scraping category: " + category)
-            output_dir = os.path.join(self.data_dir, category)
-            if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
-            self.driver.get(category_url)
+        # go through all categories
+        for cat_1 in os.listdir(self.data_dir):
+            full_cat_1 = os.path.join(self.data_dir, cat_1)
+            for cat_2 in os.listdir(full_cat_1):
+                full_cat_2 = os.path.join(full_cat_1, cat_2)
+                for cat_3 in os.listdir(full_cat_2):
+                    full_cat_3 = os.path.join(full_cat_2, cat_3)
+                    with open(os.path.join(full_cat_3, 'base_url.txt')) as f:
+                        d = json.load(f)
+                    category = d['category']
+                    category_url = d['url']
 
-            # scrape products link
-            counter = 0
-            while True:
-                has_product = False
-                # wait for products to be available, if not then check for popup
-                for i in range(self.retry_num):
-                    try:
-                        logger.info("Checking if the products are available on the page")
-                        WebDriverWait(self.driver, self.wait_timeout).until(
-                            ec.visibility_of_element_located((By.CLASS_NAME, "Bm3ON")))
-                        has_product = True
-                        break
-                    except TimeoutException:
-                        logger.info("Can't find the products after " + str(self.wait_timeout) + " seconds")
-                        self.check_popup()
-                        logger.info("Finished checking for popup")
-                        self.driver.refresh()
-                        logger.info("Refreshed the page")
-                # stop scraping this category if there's no product
-                if not has_product:
-                    logger.info("No products are available from the category: " + category + ", stop scraping")
-                    break
-                counter += 1
-                curr_page_num = self.driver.find_element(By.CLASS_NAME, 'ant-pagination-item-active').get_attribute(
-                    'title')
-                logger.info('Current page ' + str(curr_page_num))
-                soup = BeautifulSoup(self.driver.page_source, features="lxml")
-                products = soup.find_all(class_='Bm3ON')
-                logger.info('Number of products in page: ' + str(len(products)))
-                for product in products:
-                    url = product.find('a')['href'][2:]
-                    url = 'https://' + url
-                    self.write_to_file(url, os.path.join(category, 'url.txt'))
-                logger.info("Finished scraping urls from page " + str(counter))
+                    # start scraping
+                    logger.info("Scraping category: " + category)
+                    output_dir = os.path.join(self.data_dir, category)
+                    if not os.path.exists(output_dir):
+                        os.mkdir(output_dir)
+                    self.driver.get(category_url)
 
-                # WebDriverWait(self.driver, self.wait_timeout).until(
-                #     EC.visibility_of_element_located((By.CSS_SELECTOR, ".ant-pagination-next > button:nth-child(1)")))
-                next_page_button = self.driver.find_element(by=By.CSS_SELECTOR, value=".ant-pagination-next > "
-                                                                                      "button:nth-child(1)")
-                is_last_page = not next_page_button.is_enabled()
-                if counter == self.num_page_to_scrape:
-                    logger.info(f'Reached maximum number of pages to scrape in category: {category}')
-                    break
-                elif is_last_page:
-                    logger.info(f'Reached the last page of category: {category}')
-                    break
-                try:
-                    next_page_button.click()
-                    logger.info("Clicked next page")
-                except ElementClickInterceptedException:
-                    self.check_popup()
+                    # scrape products link
+                    counter = 0
+                    while True:
+                        has_product = False
+                        # wait for products to be available, if not then check for popup
+                        for i in range(self.retry_num):
+                            try:
+                                logger.info("Checking if the products are available on the page")
+                                WebDriverWait(self.driver, self.wait_timeout).until(
+                                    ec.visibility_of_element_located((By.CLASS_NAME, "Bm3ON")))
+                                has_product = True
+                                break
+                            except TimeoutException:
+                                logger.info("Can't find the products after " + str(self.wait_timeout) + " seconds")
+                                self.check_popup()
+                                logger.info("Finished checking for popup")
+                                self.driver.refresh()
+                                logger.info("Refreshed the page")
+                        # stop scraping this category if there's no product
+                        if not has_product:
+                            logger.info("No products are available from the category: " + category + ", stop scraping")
+                            break
+                        counter += 1
+                        curr_page_num = self.driver.find_element(By.CLASS_NAME, 'ant-pagination-item-active').get_attribute(
+                            'title')
+                        logger.info('Current page ' + str(curr_page_num))
+                        soup = BeautifulSoup(self.driver.page_source, features="lxml")
+                        products = soup.find_all(class_='Bm3ON')
+                        logger.info('Number of products in page: ' + str(len(products)))
+                        for product in products:
+                            url = product.find('a')['href'][2:]
+                            url = 'https://' + url
+                            self.write_to_file(url, os.path.join(category, 'url.txt'))
+                        logger.info("Finished scraping urls from page " + str(counter))
+
+                        # WebDriverWait(self.driver, self.wait_timeout).until(
+                        #     EC.visibility_of_element_located((By.CSS_SELECTOR, ".ant-pagination-next > button:nth-child(1)")))
+                        next_page_button = self.driver.find_element(by=By.CSS_SELECTOR, value=".ant-pagination-next > "
+                                                                                              "button:nth-child(1)")
+                        is_last_page = not next_page_button.is_enabled()
+                        if counter == self.num_page_to_scrape:
+                            logger.info(f'Reached maximum number of pages to scrape in category: {category}')
+                            break
+                        elif is_last_page:
+                            logger.info(f'Reached the last page of category: {category}')
+                            break
+                        try:
+                            next_page_button.click()
+                            logger.info("Clicked next page")
+                        except ElementClickInterceptedException:
+                            self.check_popup()
 
     def get_product_info(self, scroll_retry=3):
-        for category in os.listdir(self.data_dir):
-            logger.info('Scraping category: ' + category)
-            category_path = os.path.join(self.data_dir, category)
-            url_path = os.path.join(category_path, 'url.txt')
-            with open(url_path) as urls:
-                for i, url in enumerate(urls):
-                    url = url.strip()
-                    logger.info(f'Scraping url number {i}: {url}')
-                    if i != 0 and i % self.restart_num == 0:
-                        logger.info('Restart number reached, restarting driver')
-                        self.restart_driver()
+        for cat_1 in os.listdir(self.data_dir):
+            full_cat_1 = os.path.join(self.data_dir, cat_1)
+            for cat_2 in os.listdir(full_cat_1):
+                full_cat_2 = os.path.join(full_cat_1, cat_2)
+                for cat_3 in os.listdir(full_cat_2):
+                    full_cat_3 = os.path.join(full_cat_2, cat_3)
+                    with open(os.path.join(full_cat_3, 'base_url.txt')) as f:
+                        d = json.load(f)
+                    category = d['category']
 
-                    page_loaded = False
-                    for retry in range(self.retry_num):
-                        try:
-                            self.driver.get(url)
-                            page_loaded = True
-                            break
-                        except TimeoutException:
-                            if retry == self.retry_num - 1:
-                                logger.error(f'Cannot load the website after {self.retry_num} retries')
-                            else:
-                                logger.error("Cannot load the website, retrying")
+                    logger.info('Scraping category: ' + category)
+                    category_path = os.path.join(self.data_dir, category)
+                    url_path = os.path.join(category_path, 'url.txt')
+                    with open(url_path) as urls:
+                        for i, url in enumerate(urls):
+                            url = url.strip()
+                            logger.info(f'Scraping url number {i}: {url}')
+                            if i != 0 and i % self.restart_num == 0:
+                                logger.info('Restart number reached, restarting driver')
+                                self.restart_driver()
 
-                    if not page_loaded:
-                        continue
+                            page_loaded = False
+                            for retry in range(self.retry_num):
+                                try:
+                                    self.driver.get(url)
+                                    page_loaded = True
+                                    break
+                                except TimeoutException:
+                                    if retry == self.retry_num - 1:
+                                        logger.error(f'Cannot load the website after {self.retry_num} retries')
+                                    else:
+                                        logger.error("Cannot load the website, retrying")
 
-                    try:
-                        # get all product types
-                        type_arr = []
-                        WebDriverWait(self.driver, self.wait_timeout).until(
-                            ec.visibility_of_element_located((By.CLASS_NAME, 'sku-prop-content')))
-                        for retry in range(self.retry_num):
+                            if not page_loaded:
+                                continue
+
                             try:
-                                for ele in self.driver.find_elements(By.CLASS_NAME, 'sku-prop-content'):
-                                    type_arr.append(ele.find_elements(By.XPATH, './*'))
-                                logger.info(f'{len(type_arr)} types found, iterating through all of them')
-                                self._iterate_all_product_type(0, type_arr, scroll_retry=scroll_retry,
-                                                               url=url, category_path=category_path)
-                                break
-                            # except IndexError as e:
-                            #     logger.error(e)
-                            #     break
-                            except StaleElementReferenceException:
-                                logger.error('Cannot get product types, retrying')
-                            except Exception as e:
-                                logger.error(e)
-                                break
-                            if retry == self.retry_num - 1:
-                                logger.info(f'Cannot get product types after {self.retry_num} attempts')
+                                # get all product types
+                                type_arr = []
+                                WebDriverWait(self.driver, self.wait_timeout).until(
+                                    ec.visibility_of_element_located((By.CLASS_NAME, 'sku-prop-content')))
+                                for retry in range(self.retry_num):
+                                    try:
+                                        for ele in self.driver.find_elements(By.CLASS_NAME, 'sku-prop-content'):
+                                            type_arr.append(ele.find_elements(By.XPATH, './*'))
+                                        logger.info(f'{len(type_arr)} types found, iterating through all of them')
+                                        self._iterate_all_product_type(0, type_arr, scroll_retry=scroll_retry,
+                                                                       url=url, category_path=category_path)
+                                        break
+                                    # except IndexError as e:
+                                    #     logger.error(e)
+                                    #     break
+                                    except StaleElementReferenceException:
+                                        logger.error('Cannot get product types, retrying')
+                                    except Exception as e:
+                                        logger.error(e)
+                                        self.check_popup()
+                                        break
+                                    if retry == self.retry_num - 1:
+                                        logger.info(f'Cannot get product types after {self.retry_num} attempts')
+                                        self._get_product_info_helper(scroll_retry, url, category_path)
+                            except TimeoutException:
+                                logger.info('Product has no type, scraping directly')
                                 self._get_product_info_helper(scroll_retry, url, category_path)
-                    except TimeoutException:
-                        logger.info('Product has no type, scraping directly')
-                        self._get_product_info_helper(scroll_retry, url, category_path)
-            break
+                    break
 
     def _get_product_info_helper(self, scroll_retry, curr_url, category_path):
         try:
