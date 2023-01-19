@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class LazadaScraper(CommonScraper):
-    def __init__(self, num_page_to_scrape=10, data_dir='../data/lazada', wait_timeout=5, retry_num=3,
+    def __init__(self, num_page_to_scrape=10, data_dir='./data/lazada', wait_timeout=5, retry_num=3,
                  restart_num=10):
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
