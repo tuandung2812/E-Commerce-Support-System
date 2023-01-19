@@ -5,4 +5,4 @@
 /geckodriver.log
 __pycache__/
 /.idea/
-/src/geckodriver.log
+/geckodriver.log

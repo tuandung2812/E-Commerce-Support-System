@@ -1,7 +1,8 @@
 import logging
-from src.scraper.lazada_scraper import LazadaScraper
-from src.scraper.shopee_scraper import ShopeeScraper
-
+from scraper.lazada_scraper import LazadaScraper
+from scraper.shopee_scraper import ShopeeScraper
+import sys
+print(sys.path)
 logger = logging.getLogger('src')
 logger.setLevel(logging.INFO)
 

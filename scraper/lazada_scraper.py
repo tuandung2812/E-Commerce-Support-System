@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
-from src.scraper.common_scraper import CommonScraper
+from scraper.common_scraper import CommonScraper
 
 logger = logging.getLogger(__name__)
 
