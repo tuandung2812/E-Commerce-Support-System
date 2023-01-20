@@ -146,12 +146,16 @@ class ShopeeScraper(CommonScraper):
 
                                 except StaleElementReferenceException:
                                     logger.info('Cannot get product types, retrying')
+
                                 if retry == self.retry_num - 1:
                                     logger.info(f'Cannot get product types after {self.retry_num} attempts')
                                     self._get_product_info_helper(url, category_path)
                         except TimeoutException:
                             logger.info('Product has no type, scraping directly')
                             self._get_product_info_helper(url, category_path)
+
+                        except Exception as e:
+                            logger.info(e)
 
     def _iterate_all_product_type(self, type_index, type_arr, **kwargs):
         if type_index == len(type_arr):
