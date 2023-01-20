@@ -16,10 +16,19 @@ logger = logging.getLogger(__name__)
 
 class ShopeeScraper(CommonScraper):
     def __init__(self, num_page_to_scrape=10, data_dir='./data/shopee', wait_timeout=5, retry_num=3,
-                 restart_num=15):
+                 restart_num=15, is_headless=False):
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
-        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num)
+        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless)
+
+    def get_main_page(self):
+        self.driver.get("https://shopee.vn/")
+        while True:
+            try:
+                self.driver.current_url
+                time.sleep(1)
+            except:
+                break
 
     def get_product_urls(self):
         for cat_1 in os.listdir(self.data_dir):
