@@ -38,6 +38,29 @@ class CommonScraper(ABC):
         with open(full_path, 'a') as f:
             f.write(text + '\n')
 
+    def log_curr_url_num(self, category_path, num):
+        full_path = os.path.join(category_path, "_CURRENT_URL")
+        with open(full_path, 'w') as f:
+            f.write(str(num))
+
+    def get_curr_url_num(self, category_path):
+        full_path = os.path.join(category_path, "_CURRENT_URL")
+        if not os.path.exists(full_path):
+            return 0
+
+        with open(full_path, 'r') as f:
+            num = int(f.read())
+            return num
+
+    def log_done_info(self, category_path):
+        full_path = os.path.join(category_path, "_DONE")
+        with open(full_path, 'w') as f:
+            pass
+
+    def check_done_info(self, category_path):
+        full_path = os.path.join(category_path, "_DONE")
+        return os.path.exists(full_path)
+
     @abstractmethod
     def get_product_urls(self):
         pass
