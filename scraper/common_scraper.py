@@ -9,18 +9,24 @@ logger = logging.getLogger(__name__)
 
 class CommonScraper(ABC):
 
-    def __init__(self, num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num):
+    def __init__(self, num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless):
         self.restart_num = restart_num
         self.num_page_to_scrape = num_page_to_scrape
         self.data_dir = data_dir
         self.wait_timeout = wait_timeout
         self.retry_num = retry_num
-        self.driver = self.start_driver()
+        self.driver = self.start_driver(is_headless)
 
-    def start_driver(self):
+    def start_driver(self, is_headless):
         options = uc.ChromeOptions()
         options.set_capability("pageLoadStrategy", "none")
-        driver = uc.Chrome(options=options)
+        if is_headless:
+            options.headless = True
+        
+        if not os.path.exists("./profile"):
+            os.mkdir("./profile")
+        
+        driver = uc.Chrome(options=options, user_data_dir="./profile")
         driver.set_script_timeout(10)
         driver.set_page_load_timeout(20)
         driver.maximize_window()
