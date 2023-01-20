@@ -15,12 +15,13 @@ class CommonScraper(ABC):
         self.data_dir = data_dir
         self.wait_timeout = wait_timeout
         self.retry_num = retry_num
-        self.driver = self.start_driver(is_headless)
+        self.is_headless = is_headless
+        self.driver = self.start_driver()
 
-    def start_driver(self, is_headless):
+    def start_driver(self):
         options = uc.ChromeOptions()
         options.set_capability("pageLoadStrategy", "none")
-        if is_headless:
+        if self.is_headless:
             options.headless = True
         
         if not os.path.exists("./profile"):
