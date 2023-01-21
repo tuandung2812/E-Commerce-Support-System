@@ -19,16 +19,8 @@ class ShopeeScraper(CommonScraper):
                  restart_num=20, is_headless=False):
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
-        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless)
-
-    def get_main_page(self):
-        self.driver.get("https://shopee.vn/")
-        while True:
-            try:
-                self.driver.current_url
-                time.sleep(1)
-            except:
-                break
+        main_page = "https://shopee.vn/"
+        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless, main_page)
 
     def get_product_urls(self):
         for cat_1 in os.listdir(self.data_dir):
@@ -116,7 +108,7 @@ class ShopeeScraper(CommonScraper):
 
                 done = self.check_done_info(category_path)
                 if done:  # skip this category if all url are scraped
-                    logger.info(f"Category \"{category}\" is scraped already, skipping" )
+                    logger.info(f"Category \"{category}\" is scraped already, skipping")
                     continue
                 with open(url_path) as urls:
                     for i, url in enumerate(urls):

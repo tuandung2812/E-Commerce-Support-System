@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from abc import abstractmethod, ABC
 
 import undetected_chromedriver as uc
@@ -9,14 +10,20 @@ logger = logging.getLogger(__name__)
 
 class CommonScraper(ABC):
 
-    def __init__(self, num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless):
+    def __init__(self, num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless, main_page):
         self.restart_num = restart_num
         self.num_page_to_scrape = num_page_to_scrape
         self.data_dir = data_dir
         self.wait_timeout = wait_timeout
         self.retry_num = retry_num
         self.is_headless = is_headless
+        self.main_page = main_page
         self.driver = self.start_driver()
+
+    def get_main_page(self):
+        self.driver.get(self.main_page)
+        logger.info("Main page opened, after finishing logging in, press any key to continue...")
+        input()
 
     def start_driver(self):
         options = uc.ChromeOptions()

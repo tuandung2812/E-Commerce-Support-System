@@ -21,7 +21,8 @@ class LazadaScraper(CommonScraper):
                  restart_num=10, is_headless=False):
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
-        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless)
+        main_page = 'https://www.lazada.vn/'
+        super().__init__(num_page_to_scrape, data_dir, wait_timeout, retry_num, restart_num, is_headless, main_page)
 
     def get_product_urls(self):
         # go through all categories
