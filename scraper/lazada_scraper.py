@@ -110,8 +110,19 @@ class LazadaScraper(CommonScraper):
                     logger.info('Scraping category: ' + category)
                     category_path = os.path.join(self.data_dir, category)
                     url_path = os.path.join(category_path, 'url.txt')
+
+                    done = self.check_done_info(category_path)
+                    if done:  # skip this category if all url are scraped
+                        logger.info(f"Category \"{category}\" is scraped already, skipping")
+                        continue
                     with open(url_path) as urls:
                         for i, url in enumerate(urls):
+                            if i < self.get_curr_url_num(category_path):  # continue scraping from the last scraped url
+                                logger.info(f"Url number \"{i}\" is scraped already, skipping")
+                                continue
+
+                            self.log_curr_url_num(category_path, i)
+
                             url = url.strip()
                             logger.info(f'Scraping url number {i}: {url}')
                             if i != 0 and i % self.restart_num == 0:
@@ -161,7 +172,11 @@ class LazadaScraper(CommonScraper):
                             except TimeoutException:
                                 logger.info('Product has no type, scraping directly')
                                 self._get_product_info_helper(scroll_retry, url, category_path)
-                    break
+
+                            except Exception as e:
+                                logger.error(e)
+
+                    self.log_done_info(category_path)
 
     def _get_product_info_helper(self, scroll_retry, curr_url, category_path):
         try:

@@ -6,4 +6,3 @@
 __pycache__/
 /.idea/
 /geckodriver.log
-product.ndjson
