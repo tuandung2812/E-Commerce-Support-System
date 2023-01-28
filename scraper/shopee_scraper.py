@@ -198,6 +198,13 @@ class ShopeeScraper(CommonScraper):
             else:
                 logger.info('Cannot parse review and number sold info')
 
+            shipping = None
+            try:
+                shipping = self.driver.find_element(By.CLASS_NAME, 'WZTmVh').text.split('\n')[-1]
+                logger.info('Shipping info extracted')
+            except NoSuchElementException:
+                logger.info('No shipping info found')
+
             attrs = {}
             type_ele = self.driver.find_element(By.CLASS_NAME, 'flex.rY0UiC.j9be9C')
             for ele in type_ele.find_elements(By.XPATH, './div/div[@class=\'flex items-center\']'):
@@ -215,6 +222,7 @@ class ShopeeScraper(CommonScraper):
             logger.info('Product description extracted')
 
             result['product_name'] = product_name
+            result['shipping'] = shipping
             result['price'] = price
             result['product_desc'] = product_desc
             result['avg_rating'] = avg_rating
