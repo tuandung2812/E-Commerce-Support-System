@@ -5,7 +5,7 @@ from random import uniform
 
 from bs4 import BeautifulSoup
 from selenium.common import TimeoutException, ElementClickInterceptedException, \
-    MoveTargetOutOfBoundsException, StaleElementReferenceException
+    MoveTargetOutOfBoundsException, StaleElementReferenceException, NoSuchElementException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -154,8 +154,8 @@ class LazadaScraper(CommonScraper):
                                         for ele in self.driver.find_elements(By.CLASS_NAME, 'sku-prop-content'):
                                             type_arr.append(ele.find_elements(By.XPATH, './*'))
                                         logger.info(f'{len(type_arr)} types found, iterating through all of them')
-                                        self._iterate_all_product_type(0, type_arr, scroll_retry=scroll_retry,
-                                                                       url=url, category_path=category_path)
+                                        self._iterate_all_product_type(0, type_arr, scroll_retry=scroll_retry, url=url,
+                                                                       category_path=category_path, category=category)
                                         break
                                     # except IndexError as e:
                                     #     logger.error(e)
@@ -168,32 +168,31 @@ class LazadaScraper(CommonScraper):
                                         break
                                     if retry == self.retry_num - 1:
                                         logger.info(f'Cannot get product types after {self.retry_num} attempts')
-                                        self._get_product_info_helper(scroll_retry, url, category_path)
+                                        self._get_product_info_helper(scroll_retry, url, category_path, category)
                             except TimeoutException:
                                 logger.info('Product has no type, scraping directly')
-                                self._get_product_info_helper(scroll_retry, url, category_path)
+                                self._get_product_info_helper(scroll_retry, url, category_path, category)
 
                             except Exception as e:
                                 logger.error(e)
 
                     self.log_done_info(category_path)
 
-    def _get_product_info_helper(self, scroll_retry, curr_url, category_path):
+    def _get_product_info_helper(self, scroll_retry, curr_url, category_path, category):
         try:
             result = {}
 
             # scroll down to load product description
-            logger.info('Scrolling to find average rating')
+            logger.info('Scrolling to find product descriptiion')
             found_desc = self._scroll_to_find_element(scroll_retry, 'pdp-product-desc', By.CLASS_NAME, curr_url)
             if not found_desc:
                 logger.info('Product description not found')
 
             # scroll down to load average rating
             logger.info('Scrolling to find average rating')
-            avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, 1000)
+            avg_rating = self._scroll_to_find_element(scroll_retry, 'score-average', By.CLASS_NAME, curr_url)
             if avg_rating:
                 avg_rating = avg_rating.text
-                result['avg_rating'] = avg_rating
                 logger.info('Average rating extracted')
             else:
                 logger.info('Average rating not found')
@@ -238,12 +237,22 @@ class LazadaScraper(CommonScraper):
                 product_desc = str(soup.find(class_='pdp-product-desc height-limit'))
                 logger.info('Product description extracted')
 
+            shop_info = None
+            try:
+                shop_info = self.driver.find_element(By.CLASS_NAME, 'seller-container').text
+                logger.info('Shop info extracted')
+            except NoSuchElementException:
+                logger.info('Shop info not found')
+
             result['product_name'] = product_name
+            result['shop_info'] = shop_info
             result['price'] = price
             result['brand_name'] = brand
             result['num_review'] = num_review
             result['attrs'] = attrs
             result['product_desc'] = product_desc
+            result['avg_rating'] = avg_rating
+            result['category'] = category
             result['url'] = curr_url
 
             with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
@@ -252,7 +261,7 @@ class LazadaScraper(CommonScraper):
         except AttributeError as e:
             logger.error(e)
 
-    def _scroll_to_find_element(self, scroll_retry, element_name, by, curr_url, scroll_by=500):
+    def _scroll_to_find_element(self, scroll_retry, element_name, by, curr_url, scroll_by=1000):
         try:
             self.driver.execute_script("window.scrollTo(0,0)")
         except TimeoutException:
@@ -293,7 +302,8 @@ class LazadaScraper(CommonScraper):
 
     def _iterate_all_product_type(self, type_index, type_arr, **kwargs):
         if type_index == len(type_arr):
-            self._get_product_info_helper(kwargs['scroll_retry'], kwargs['url'], kwargs['category_path'])
+            self._get_product_info_helper(kwargs['scroll_retry'], kwargs['url'],
+                                          kwargs['category_path'], kwargs['category'])
             return
 
         for element in type_arr[type_index]:
@@ -312,7 +322,8 @@ class LazadaScraper(CommonScraper):
                 WebDriverWait(self.driver, self.wait_timeout).until(ec.element_to_be_clickable(element))
                 element.click()
                 self._iterate_all_product_type(type_index + 1, type_arr, scroll_retry=kwargs['scroll_retry'],
-                                               url=kwargs['url'], category_path=kwargs['category_path'])
+                                               url=kwargs['url'], category_path=kwargs['category_path'],
+                                               category=kwargs['category'])
             except StaleElementReferenceException:
                 logger.info('Element not attached to the page, renewing all elements')
                 for row, attr in enumerate(self.driver.find_elements(By.CLASS_NAME, 'sku-prop-content')):
