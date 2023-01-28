@@ -21,9 +21,9 @@ if __name__ == '__main__':
     parser.add_argument('--site', type=str,
                         help='The website to scrape from. Values can be lazada or shopee')
     parser.add_argument('--type', type=str,
-                        help='What kind of data to scrape. Values can be login, url or info')
+                        help='What kind of data to scrape. Values can be url or info')
     parser.add_argument('--num_page', type=int,
-                        help='how many pages to scrape urls from')
+                        help='How many pages to scrape urls from. Only effective when type is url')
     parser.add_argument('--headless', action='store_true',
                         help='Run browser in the background')
     parser.add_argument('--login', action='store_true',

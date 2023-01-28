@@ -173,6 +173,9 @@ class ShopeeScraper(CommonScraper):
     def _get_product_info_helper(self, curr_url, category_path):
         try:
             result = {}
+
+            WebDriverWait(self.driver, self.wait_timeout).until(
+                ec.visibility_of_element_located((By.CLASS_NAME, "_44qnta")))
             product_name = self.driver.find_element(By.CLASS_NAME, '_44qnta').text
             logger.info('Product name extracted')
 
@@ -221,8 +224,16 @@ class ShopeeScraper(CommonScraper):
                 'innerHTML')
             logger.info('Product description extracted')
 
+            shop_info = None
+            try:
+                shop_info = self.driver.find_element(By.CLASS_NAME, 'NLeTwo.page-product__shop').text
+                logger.info('Shop info extracted')
+            except NoSuchElementException:
+                logger.info('Shop info not found')
+
             result['product_name'] = product_name
             result['shipping'] = shipping
+            result['shop_info'] = shop_info
             result['price'] = price
             result['product_desc'] = product_desc
             result['avg_rating'] = avg_rating
