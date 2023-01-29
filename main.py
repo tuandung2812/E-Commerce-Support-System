@@ -9,10 +9,15 @@ logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 
+fh = logging.FileHandler('log.txt')
+fh.setLevel(logging.INFO)
+
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
+fh.setFormatter(formatter)
 
 logger.addHandler(ch)
+logger.addHandler(fh)
 
 if __name__ == '__main__':
     # Instantiate the parser
