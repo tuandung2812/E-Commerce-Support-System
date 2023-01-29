@@ -245,5 +245,5 @@ class ShopeeScraper(CommonScraper):
             with open(os.path.join(category_path, 'product.ndjson'), 'a') as f:
                 json.dump(result, f, ensure_ascii=False)
                 f.write('\n')
-        except NoSuchElementException as e:
+        except (NoSuchElementException, TimeoutException) as e:
             logger.error(e)
