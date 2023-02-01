@@ -65,3 +65,9 @@ def extract_shop_num_follower(df):
     shop_num_follower = k_to_number(shop_num_follower)
     shop_num_follower = shop_num_follower.cast('int')
     return df.withColumn("shop_num_follower", shop_num_follower)
+
+
+def clean_numeric_field(df, col_name):
+    cleaned_field = k_to_number(col(col_name))
+    cleaned_field = cleaned_field.cast('int')
+    return df.withColumn(col_name, cleaned_field)
