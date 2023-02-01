@@ -1,6 +1,6 @@
 from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, count, instr
 
-special_char = '[^a-z0-9A-Z_' \
+special_char = '[^a-z0-9A-Z_ ' \
                'àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳỵỷỹýÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬ' \
                'ÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲỴỶỸÝ]+'
 
