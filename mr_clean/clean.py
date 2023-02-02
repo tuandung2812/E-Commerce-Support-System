@@ -65,6 +65,14 @@ def extract_shop_num_follower(df):
     return df.withColumn("shop_num_follower", shop_num_follower)
 
 
+def clean_shipping(df):
+    shipping = lower(col('shipping'))
+    shipping = regexp_replace(shipping, special_char, '')
+    shipping = regexp_extract(shipping, r'\d+', 0)
+    shipping = shipping.cast('int')
+    return df.withColumn('shipping', shipping)
+
+
 def clean_numeric_field(df, col_name):
     cleaned_field = k_to_number(col(col_name))
     cleaned_field = cleaned_field.cast('int')
