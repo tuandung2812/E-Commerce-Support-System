@@ -136,7 +136,7 @@ def extract_shop_reply_percectage(df):
 
 def extract_shop_reply_time(df):
     shop_reply_time = regexp_extract(col('shop_info'), 'Thời Gian Phản Hồi\n(.+)\n', 1)
-    return df.withColumn(shop_reply_time)
+    return df.withColumn('shop_reply_time', shop_reply_time)
 
 
 def extract_shop_creation_time(df):
