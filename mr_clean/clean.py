@@ -33,7 +33,6 @@ def clean_price(df):
     value = regexp_replace(value, '\.', '')
     return df.withColumn('price', value)
 
-
 def clean_desc(df):
     product_desc = lower(col('product_desc'))
     product_desc = regexp_replace(product_desc, 'Vớ/ Tất', 'Vớ, Tất')
@@ -56,30 +55,30 @@ def clean_desc(df):
 
     return df.withColumn('product_desc', product_desc)
 
-def get_country(df):
+def extract_country(df):
     country = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
     country = regexp_extract(country, 'xuất xứ: (.+?)/', 1)
     country = regexp_replace(country, special_char, ' ')
 
     return df.withColumn('country', country)
 
-def get_brand(df):
+def extract_brand(df):
     brand = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
     brand = regexp_extract(brand, 'thương hiệu: (.+?)-/', 1)
     brand = regexp_replace(brand, special_char, ' ')
     return df.withColumn('brand', brand)
 
-def get_stock(df):
+def extract_stock(df):
     stock = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
     stock = regexp_extract(stock, 'kho hàng: (.+?)/', 1)
     stock = regexp_replace(stock, special_char, ' ')
     return df.withColumn('stock', stock)
 
-def get_first_category(df):
+def extract_first_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+?)-', 1)
     return df.withColumn('category', category)
 
-def get_second_category_temp(df):
+def extract_second_category_temp(df):
     category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
     cat_list = split(category, r"-")
 
@@ -90,7 +89,7 @@ def get_second_category_temp(df):
         ).otherwise('no')
     )
 
-def get_third_category(df):
+def extract_third_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
     cat_list = split(category, r"-")
 
@@ -102,11 +101,10 @@ def get_third_category(df):
     )
         
 
-def get_smaller_desc(df):
+def extract_smaller_desc(df):
     description = regexp_extract('product_desc', 'mô tả sản phẩm(.*)', 1)
     description = regexp_replace(description, special_char, ' ')
     return df.withColumn('description', description)
-
 
 
 def clean_attrs(df):
@@ -121,7 +119,6 @@ def extract_shop_like_tier(df):
         .when(shop_like_tier == "Yêu Thích", 1) \
         .otherwise(0)
     return df.withColumn('shop_like_tier', shop_like_tier)
-
 
 def extract_shop_num_review(df):
     shop_num_review = regexp_extract(col('shop_info'), 'Đánh Giá\n(.+)\n', 1)
