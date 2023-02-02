@@ -1,9 +1,8 @@
-from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit
+from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split
 
 special_char = '[^a-z0-9A-Z_ ' \
                'àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳỵỷỹýÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬ' \
                'ÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲỴỶỸÝ]+'
-
 
 def k_to_number(c):  # 3,2k -> 3200  
     contain_comma = instr(c, ',') >= 1
@@ -12,13 +11,109 @@ def k_to_number(c):  # 3,2k -> 3200
     c = regexp_replace(c, ',', '')
     return c
 
+def clean_product_name(df):
+    # Lowercase
+    product_name = lower(col('product_name'))
+    # Remove like tier
+    product_name = regexp_replace(product_name, 'yêu thích\n|yêu thích\+\n', ' ')
+    # Remove contents inside [], option indicate promotion, prices    
+    product_name = regexp_replace(product_name, r'\[.*?\]', ' ')
+    # Remove special character
+    product_name = regexp_replace(product_name, special_char, ' ')
+    # Remove redundant whitespaces  
+    product_name = regexp_replace(product_name, ' +', ' ')
+
+    # Trim
+    product_name = trim(product_name)
+    return df.withColumn('product_name', product_name)
+
+def clean_price(df):
+    value = col('price')   
+    value = regexp_replace(value, r'.*₫' , '')
+    value = regexp_replace(value, '\.', '')
+    return df.withColumn('price', value)
+
+
+def clean_desc(df):
+    product_desc = lower(col('product_desc'))
+    product_desc = regexp_replace(product_desc, 'Vớ/ Tất', 'Vớ, Tất')
+    product_desc = regexp_replace(product_desc, 'Vớ/Tất', 'Vớ, Tất')
+    product_desc = regexp_replace(product_desc, 'Quần Dài/Quần Âu', 'Quần Dài, Quần Âu')
+    product_desc = regexp_replace(product_desc, 'Quần Dài/ Quần Âu', 'Quần Dài, Quần Âu')
+    product_desc = regexp_replace(product_desc, ' &amp;', ',')
+    product_desc = regexp_replace(product_desc, '<svg.*?</svg>|<div>|div|class=|"|<label.*?>|<flex.*?>| href=/', '')
+    product_desc = regexp_replace(product_desc, '</a>', '-')
+    product_desc = regexp_replace(product_desc, '</label>', ': ')
+    product_desc = regexp_replace(product_desc, '< ', '<')
+    product_desc = regexp_replace(product_desc, "\/.*?\>","/>")
+    product_desc = regexp_replace(product_desc, '<a ', '<')
+    product_desc = regexp_replace(product_desc, '<p ', '<')
+    product_desc = regexp_replace(product_desc, ' +', ' ')
+
+    # Split
+    product_desc = regexp_replace(product_desc, '</>', '/')
+    product_desc = regexp_replace(product_desc, '<.*?>', '')
+
+    return df.withColumn('product_desc', product_desc)
+
+def get_country(df):
+    country = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
+    country = regexp_extract(country, 'xuất xứ: (.+?)/', 1)
+    country = regexp_replace(country, special_char, ' ')
+
+    return df.withColumn('country', country)
+
+def get_brand(df):
+    brand = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
+    brand = regexp_extract(brand, 'thương hiệu: (.+?)-/', 1)
+    brand = regexp_replace(brand, special_char, ' ')
+    return df.withColumn('brand', brand)
+
+def get_stock(df):
+    stock = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
+    stock = regexp_extract(stock, 'kho hàng: (.+?)/', 1)
+    stock = regexp_replace(stock, special_char, ' ')
+    return df.withColumn('stock', stock)
+
+def get_first_category(df):
+    category = regexp_extract('product_desc', 'shopee-(.+?)-', 1)
+    return df.withColumn('category', category)
+
+def get_second_category_temp(df):
+    category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
+    cat_list = split(category, r"-")
+
+    return df.withColumn('second_category', 
+        when (
+            size(cat_list) > 1,
+            concat_ws(' / ',cat_list[0],cat_list[1])
+        ).otherwise('no')
+    )
+
+def get_third_category(df):
+    category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
+    cat_list = split(category, r"-")
+
+    return df.withColumn('third_category', 
+        when (
+            size(cat_list) > 2,
+            concat_ws(' / ',cat_list[0],cat_list[1], cat_list[2])
+        ).otherwise('no')
+    )
+        
+
+def get_smaller_desc(df):
+    description = regexp_extract('product_desc', 'mô tả sản phẩm(.*)', 1)
+    description = regexp_replace(description, special_char, ' ')
+    return df.withColumn('description', description)
+
+
 
 def clean_attrs(df):
     attrs = lower(col('attrs'))
     attrs = regexp_replace(attrs, special_char, ' ')
     attrs = trim(attrs)
     return df.withColumn('attrs', attrs)
-
 
 def extract_shop_like_tier(df):
     shop_like_tier = regexp_extract(col('shop_info'), '^(Yêu Thích\+?)\n', 1)
