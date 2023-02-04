@@ -74,11 +74,16 @@ def extract_stock(df):
     stock = regexp_replace(stock, special_char, ' ')
     return df.withColumn('stock', stock)
 
+def extract_origin(df):
+    origin = regexp_replace(col('product_desc'),  'mô tả sản phẩm(.*)' , '')
+    origin = regexp_extract(origin, 'gửi từ: (.+?)/', 1)
+    return df.withColumn('origin', origin)
+
 def extract_first_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+?)-', 1)
     return df.withColumn('category', category)
 
-def extract_second_category_temp(df):
+def extract_second_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
     cat_list = split(category, r"-")
 
@@ -113,6 +118,11 @@ def clean_attrs(df):
     attrs = trim(attrs)
     return df.withColumn('attrs', attrs)
 
+def extract_shop_name(df):
+    remove_like_tier = regexp_replace(col('shop_info'), 'Yêu Thích\n|Yêu Thích\+\n', '')
+    shop_name = regexp_extract(remove_like_tier, '(.+?)\n', 1)
+    return df.withColumn('shop_name', shop_name)
+
 def extract_shop_like_tier(df):
     shop_like_tier = regexp_extract(col('shop_info'), '^(Yêu Thích\+?)\n', 1)
     shop_like_tier = when(shop_like_tier == "Yêu Thích+", 2) \
@@ -136,7 +146,7 @@ def extract_shop_reply_percectage(df):
 
 def extract_shop_reply_time(df):
     shop_reply_time = regexp_extract(col('shop_info'), 'Thời Gian Phản Hồi\n(.+)\n', 1)
-    return df.withColumn(shop_reply_time)
+    return df.withColumn("shop_reply_time", shop_reply_time)
 
 
 def extract_shop_creation_time(df):
@@ -161,7 +171,6 @@ def clean_shipping(df):
     shipping = lower(col('shipping'))
     shipping = regexp_replace(shipping, special_char, '')
     shipping = regexp_extract(shipping, r'\d+', 0)
-    shipping = shipping.cast('int')
     return df.withColumn('shipping', shipping)
 
 
