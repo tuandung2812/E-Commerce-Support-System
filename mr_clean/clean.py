@@ -80,8 +80,8 @@ def extract_origin(df):
     return df.withColumn('origin', origin)
 
 def extract_first_category(df):
-    category = regexp_extract('product_desc', 'shopee-(.+?)-', 1)
-    return df.withColumn('category', category)
+    first_category = regexp_extract('product_desc', 'shopee-(.+?)-', 1)
+    return df.withColumn('first_category', first_category)
 
 def extract_second_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
