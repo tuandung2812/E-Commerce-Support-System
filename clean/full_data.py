@@ -1,5 +1,7 @@
-from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split
+from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split, row_number
 from pyspark.sql.types import StructType,StructField, StringType
+from pyspark.sql import Window
+
 from pyspark.sql import SparkSession
 import argparse
 
@@ -9,11 +11,10 @@ special_char = '[^a-z0-9A-Z_ ' \
 
 spark = (SparkSession
     .builder
-    .appName("data_cleaning")
+    .appName("full_data")
     .getOrCreate())
 
 def load_file(path):
-    path = '/home/viet/OneDrive/Studying_Materials/Big_Data_Storage_and_Processing/E-Commerce-Support-System/all.ndjson'
 
     # to convert attrs to String
     schema = StructType([
@@ -207,13 +208,22 @@ def clean_numeric_field(df, col_name):
     cleaned_field = cleaned_field.cast('int')
     return df.withColumn(col_name, cleaned_field)
 
-def write_file(df):
+
+def write_file(df, destination):
+
+    (df  
+        # .coalesce(1)
+        .write.option("header", True)
+        .format("csv")
+        .mode('overwrite')
+        .csv(destination))
+
     return df
 
-def clean_vai_lon(path):
+def clean_vai_lon(origin, destination):
 
     # Load
-    df = load_file(path)
+    df = load_file(origin)
 
     # Clean
     df = clean_product_name(df)
@@ -237,22 +247,26 @@ def clean_vai_lon(path):
     df = extract_shop_num_follower(df)
     df = clean_shipping(df)
     df = clean_numeric_field(df)
-
-    # Write
-    write_file(df)
     
+    # Write
+    write_file(df, destination)
+
     return df
 
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Data cleaning')
+    parser = argparse.ArgumentParser(description='Get full data')
 
-    parser.add_argument('--file', 
+    parser.add_argument('--origin', 
                         type=str,
-                        help='File location')
+                        help='Read location')
+
+    parser.add_argument('--destination', 
+                        type=str,
+                        help='Save location')
 
     args = parser.parse_args()
 
-    clean_vai_lon(args.file)
+    clean_vai_lon(args.origin, args.destination)
     
