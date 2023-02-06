@@ -1,11 +1,16 @@
 from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split
 from pyspark.sql.types import StructType,StructField, StringType
+from pyspark.sql import SparkSession
 import argparse
 
 special_char = '[^a-z0-9A-Z_ ' \
                'àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳỵỷỹýÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬ' \
                'ÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲỴỶỸÝ]+'
 
+spark = (SparkSession
+    .builder
+    .appName("data_cleaning")
+    .getOrCreate())
 
 def load_file(path):
     path = '/home/viet/OneDrive/Studying_Materials/Big_Data_Storage_and_Processing/E-Commerce-Support-System/all.ndjson'
@@ -25,6 +30,8 @@ def load_file(path):
     ])
     df = spark.read.format("json").schema(schema)\
     .load(path)
+
+    return df
 
 def k_to_number(c):  # 3,2k -> 3200  
     contain_comma = instr(c, ',') >= 1
@@ -200,6 +207,43 @@ def clean_numeric_field(df, col_name):
     cleaned_field = cleaned_field.cast('int')
     return df.withColumn(col_name, cleaned_field)
 
+def write_file(df):
+    return df
+
+def clean_vai_lon(path):
+
+    # Load
+    df = load_file(path)
+
+    # Clean
+    df = clean_product_name(df)
+    df = clean_price(df)
+    df = clean_desc(df)
+    df = extract_country(df)
+    df = extract_brand(df)
+    df = extract_stock(df)
+    df = extract_origin(df)
+    df = extract_first_category(df)
+    df = extract_second_category(df)
+    df = extract_third_category(df)
+    df = extract_smaller_desc(df)
+    df = clean_attrs(df)
+    df = extract_shop_name(df)
+    df = extract_shop_like_tier(df)
+    df = extract_shop_num_review(df)
+    df = extract_shop_reply_percectage(df)
+    df = extract_shop_reply_time(df)
+    df = extract_shop_creation_time(df)
+    df = extract_shop_num_follower(df)
+    df = clean_shipping(df)
+    df = clean_numeric_field(df)
+
+    # Write
+    write_file(df)
+    
+    return df
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Data cleaning')
@@ -208,5 +252,7 @@ if __name__ == '__main__':
                         type=str,
                         help='File location')
 
-    
+    args = parser.parse_args()
+
+    clean_vai_lon(args.file)
     
