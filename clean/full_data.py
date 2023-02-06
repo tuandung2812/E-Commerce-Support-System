@@ -212,7 +212,7 @@ def clean_numeric_field(df, col_name):
 def write_file(df, destination):
 
     (df  
-        # .coalesce(1)
+        .coalesce(1)
         .write.option("header", True)
         .format("csv")
         .mode('overwrite')
@@ -246,11 +246,13 @@ def clean_vai_lon(origin, destination):
     df = extract_shop_creation_time(df)
     df = extract_shop_num_follower(df)
     df = clean_shipping(df)
-    df = clean_numeric_field(df)
+    df = clean_numeric_field(df, "num_sold")
+    df = clean_numeric_field(df, "num_review")
     
     # Write
     write_file(df, destination)
 
+    print("Succeed bitch!")
     return df
 
 

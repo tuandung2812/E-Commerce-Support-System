@@ -25,7 +25,7 @@ def load_file(path):
         StructField("shop_info", StringType(), True),
         StructField("url", StringType(), True)
     ])
-    df = spark.read.format("parquet").schema(schema)\
+    df = spark.read.format("csv").schema(schema)\
     .load(path)
 
     return df
@@ -38,11 +38,13 @@ def grouping(df):
 def write_file(df, destination):
 
     (df  
-        # .coalesce(1)
+        .coalesce(1)
         .write.option("header", True)
         .format("csv")
         .mode('overwrite')
         .csv(destination))
+
+    print("Succeed bitch!")
 
     return df
 
