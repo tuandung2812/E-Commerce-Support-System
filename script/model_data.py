@@ -1,14 +1,14 @@
-from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split, row_number
+from pyspark.sql.functions import col, lit, avg, row_number, coalesce, concat_ws
 from pyspark.sql.types import StructType,StructField, StringType, DoubleType, IntegerType
 from pyspark.sql import Window
-
 from pyspark.sql import SparkSession
 import argparse
 
 spark = (SparkSession
     .builder
-    .appName("group_data")
+    .appName("model_data")
     .getOrCreate())
+
 
 def load_file(path):
     schema = StructType([
@@ -41,6 +41,51 @@ def load_file(path):
 
     return df
 
+
+def fill_with_mean(df, columns=set()):
+    df = df.select(
+        *(
+            coalesce(col(column), avg(column).over(Window.orderBy(lit(1)))).alias(column)
+            if column in columns
+            else col(column)
+            for column in df.columns
+        )
+    )
+    return df
+
+
+def drop_null_record(df):
+    df = df.filter(df["price"].isNotNull())
+    df = df.filter(df["product_name"].isNotNull())
+    df = df.filter("product_name != ''")
+    df = df.filter(df["shop_name"].isNotNull())
+    return df
+
+
+def fill_with_blank(df):
+    df = df.na.fill("",["shipping", "country"])
+    return df
+
+
+def fill_with_no_info(df):
+    df = df.na.fill("no info",['brand', 'first_category', 'second_category', 'third_category', 'shop_like_tier', 'shop_reply_time'])
+    return df
+
+
+def concat_columns(df):
+    df =  df.withColumn('name_description', concat_ws(' ', 'product_name', 'description'))
+    df =  df.withColumn('augmented_description', concat_ws(' ', 'product_name', 'description', 'shipping', 'country'))
+    return df
+
+
+def drop_redundant_columns(df):
+    df = df.drop(col("url"))
+    df = df.drop(col("attrs"))
+    df = df.drop(col("shipping"))
+    df = df.drop(col("country"))
+    df = df.drop(col("stock"))
+    return df
+
 def grouping(df):
     w = Window.partitionBy('product_name').orderBy(col("price").desc())
     df = df.withColumn("row",row_number().over(w)).filter(col("row") == 1).drop("row")
@@ -56,17 +101,26 @@ def write_file(df, destination):
         .csv(destination))
 
     print("Succeed!")
-
     return df
 
-def get_visualize_data(path, destination):
+def get_model_data(path, destination):
+    
     df = load_file(path)
+
+    df = fill_with_mean(df)
+    df = drop_null_record(df)
+    df = fill_with_blank(df)
+    df = fill_with_no_info(df)
+    df = concat_columns(df)
+    df = drop_redundant_columns(df)
+
     df = grouping(df)
     write_file(df, destination)
+    return df
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Get visualize data')
+    parser = argparse.ArgumentParser(description='Get model data')
 
     parser.add_argument('--origin', 
                         type=str,
@@ -78,4 +132,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    get_visualize_data(args.origin, args.destination)
+    get_model_data(args.origin, args.destination)
