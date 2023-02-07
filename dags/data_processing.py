@@ -20,27 +20,28 @@ with DAG(
 
     task1 = BashOperator(
         task_id='crawl_url',
-        bash_command='python 3 /home/jazzdung/E-Commerce-Support-System/script/main.py --site shopee --type url --num_page 5'
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/main.py --site shopee --type url --num_page 1'
     )
 
     task2 = BashOperator(
         task_id='crawl_data',
-        bash_command='python 3 /home/jazzdung/E-Commerce-Support-System/script/main.py --site shopee --type info'
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/main.py --site shopee --type info'
     )
 
     task3 = BashOperator(
         task_id='clean_data',
-        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/full_data.py --origin /home/jazzdung/data/product.ndjson --destination /home/jazzdung/data/full_data.csv'
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/full_data.py --origin hdfs://localhost:9000/user/hadoop/test_file --destination hdfs://localhost:9000/user/hadoop/full_data.csv'
     )
 
     task4 = BashOperator(
         task_id='create_visualize_data',
-        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/visualize_data.py --origin /home/jazzdung/data/full_data.csv --destination /home/jazzdung/data/visualiza_data.csv'
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/visualize_data.py --origin hdfs://localhost:9000/user/hadoop/full_data.csv --destination hdfs://localhost:9000/user/hadoop/visualiza_data.csv'
     )
 
     task5 = BashOperator(
         task_id='create_model_data',
-        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/model_data.py --origin /home/jazzdung/data/full_data.csv --destination /home/jazzdung/data/model_data.csv'
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/model_data.py --origin hdfs://localhost:9000/user/hadoop/full_data.csv --destination hdfs://localhost:9000/user/hadoop/model_data.csv'
     )
+
 
     task1>>task2>>task3>>[task4,task5]
