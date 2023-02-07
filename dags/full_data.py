@@ -1,7 +1,6 @@
-from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split, row_number
+from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split, avg, isnan, when, count, isnull, mean, coalesce
 from pyspark.sql.types import StructType,StructField, StringType
 from pyspark.sql import Window
-
 from pyspark.sql import SparkSession
 import argparse
 
@@ -220,7 +219,7 @@ def write_file(df, destination):
 
     return df
 
-def clean_vai_lon(origin, destination):
+def get_full_data(origin, destination):
 
     # Load
     df = load_file(origin)
@@ -252,7 +251,7 @@ def clean_vai_lon(origin, destination):
     # Write
     write_file(df, destination)
 
-    print("Succeed bitch!")
+    print("Succeed!")
     return df
 
 
@@ -270,5 +269,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    clean_vai_lon(args.origin, args.destination)
+    get_full_data(args.origin, args.destination)
     
