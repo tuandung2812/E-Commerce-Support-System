@@ -1,0 +1,10 @@
+ schema = StructType([
+    StructField("avg_rating", double (nullable = true)
+    StructField("product_name", StringType(), True),
+    StructField("price", StringType(), True),
+    StructField("brand_name", StringType(), True),
+    StructField("num_review", StringType(), True),
+    StructField("attrs", map (nullable = true)
+    StructField("product_desc", StringType(), True),
+    StructField("url", StringType(), True)
+])
