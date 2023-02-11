@@ -76,6 +76,7 @@ def clean_desc(df):
     product_desc = regexp_replace(product_desc, '<a ', '<')
     product_desc = regexp_replace(product_desc, '<p ', '<')
     product_desc = regexp_replace(product_desc, ' +', ' ')
+    product_desc = trim(product_desc)
 
     # Split
     product_desc = regexp_replace(product_desc, '</>', '/')
@@ -138,6 +139,9 @@ def extract_description(df):
     description = regexp_replace(description, special_char, ' ')
     description = regexp_extract(description, 'mô tả sản phẩm(.*)', 1)
     description = regexp_replace(description, special_char, ' ')
+    description = regexp_replace(description, ' +', ' ')
+    description = trim(description)
+
     return df.withColumn('description', description)
 
 
@@ -246,11 +250,17 @@ def get_full_data(origin, destination):
     df = extract_shop_creation_time(df)
     df = extract_shop_num_follower(df)
     df = clean_shipping(df)
+
     df = clean_numeric_field(df, "num_sold")
     df = clean_numeric_field(df, "num_review")
 
-    df = df.drop("prduct_desc")
-    
+    df = df.drop("product_desc")
+    df = df.drop("shop_info")
+
+    df = df.withColumn("shop_like_tier",df["shop_like_tier"].cast('string'))
+
+
+
     # Write
     write_file(df, destination)
 

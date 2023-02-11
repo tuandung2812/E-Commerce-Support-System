@@ -1,4 +1,4 @@
-from pyspark.sql.functions import col, lit, avg, row_number, coalesce, concat_ws
+from pyspark.sql.functions import col, lit, avg, row_number, coalesce, concat_ws, when
 from pyspark.sql.types import StructType,StructField, StringType, DoubleType, IntegerType
 from pyspark.sql import Window
 from pyspark.sql import SparkSession
@@ -29,7 +29,7 @@ def load_shopee(path):
         StructField("third_category", StringType(), True),
         StructField("description", StringType(), True),
         StructField("shop_name", StringType(), True),
-        StructField("shop_like_tier", IntegerType(), True),
+        StructField("shop_like_tier", StringType(), True),
         StructField("shop_num_review", IntegerType(), True),
         StructField("shop_reply_percentage", DoubleType(), True),
         StructField("shop_reply_time", StringType(), True),
@@ -66,7 +66,18 @@ def load_lazada(path):
     return df
 
 
-def fill_with_mean(df, columns=set()):
+def fill_with_mean(df):
+
+    columns = ['avg_rating', 
+                'shop_rating', 
+                'ship_on_time', 
+                'shop_reply_percectage', 
+                'num_review', 'num_sold', 
+                'shop_num_review', 
+                'shop_reply_percentage', 
+                'shop_creation_time', 
+                'shop_num_follower']
+
     df = df.select(
         *(
             coalesce(col(column), avg(column).over(Window.orderBy(lit(1)))).alias(column)
@@ -83,16 +94,19 @@ def drop_null_record(df):
     df = df.filter(df["product_name"].isNotNull())
     df = df.filter("product_name != ''")
     df = df.filter(df["shop_name"].isNotNull())
+    df = df.filter(df["description"].isNotNull())
+
     return df
 
 
 def fill_with_blank(df):
-    df = df.na.fill("",["shipping", "country"])
+    df = df.na.fill("",["shipping", "country", "origin"])
     return df
 
 
 def fill_with_no_info(df):
-    df = df.na.fill("no info",['brand', 'first_category', 'second_category', 'third_category', 'shop_like_tier', 'shop_reply_time'])
+    df = df.withColumn("brand", when(df["brand"] == '', 'no info').otherwise(df["brand"]))
+    df = df.na.fill("no info", ['first_category', 'second_category', 'third_category', 'shop_like_tier', 'shop_reply_time'])
     return df
 
 
@@ -130,9 +144,9 @@ def write_file(df, destination):
 def get_model_data(shopee_path, lazada_path, destination):
 
     # Load data
-    shopee_data = load_shopee(shopee_path)
-    lazada_data = load_lazada(lazada_path)
-    df = shopee_data.unionByName(lazada_data, allowMissingColumns=True)
+    shopee_df = load_shopee(shopee_path)
+    lazada_df = load_lazada(lazada_path)
+    df = shopee_df.unionByName(lazada_df, allowMissingColumns=True)
 
     df = fill_with_mean(df)
     df = drop_null_record(df)
