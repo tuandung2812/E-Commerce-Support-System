@@ -1,6 +1,5 @@
 from pyspark.sql.functions import lower, regexp_replace, regexp_extract, col, trim, when, instr, lit, concat_ws, size, split, avg, isnan, when, count, isnull, mean, coalesce
 from pyspark.sql.types import StructType,StructField, StringType
-from pyspark.sql import Window
 from pyspark.sql import SparkSession
 import argparse
 
@@ -10,7 +9,7 @@ special_char = '[^a-z0-9A-Z_ ' \
 
 spark = (SparkSession
     .builder
-    .appName("full_data")
+    .appName("full_shopee_data")
     .getOrCreate())
 
 def load_file(path):
@@ -110,7 +109,7 @@ def extract_origin(df):
 
 def extract_first_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+?)-', 1)
-    return df.withColumn('category', category)
+    return df.withColumn('first_category', category)
 
 def extract_second_category(df):
     category = regexp_extract('product_desc', 'shopee-(.+)-//', 1)
@@ -120,7 +119,7 @@ def extract_second_category(df):
         when (
             size(cat_list) > 1,
             concat_ws(' / ',cat_list[0],cat_list[1])
-        ).otherwise('no')
+        ).otherwise('no info')
     )
 
 def extract_third_category(df):
@@ -131,11 +130,13 @@ def extract_third_category(df):
         when (
             size(cat_list) > 2,
             concat_ws(' / ',cat_list[0],cat_list[1], cat_list[2])
-        ).otherwise('no')
+        ).otherwise('no info')
     )
         
-def extract_smaller_desc(df):
-    description = regexp_extract('product_desc', 'mô tả sản phẩm(.*)', 1)
+def extract_description(df):
+    description = col('product_desc')
+    description = regexp_replace(description, special_char, ' ')
+    description = regexp_extract(description, 'mô tả sản phẩm(.*)', 1)
     description = regexp_replace(description, special_char, ' ')
     return df.withColumn('description', description)
 
@@ -235,7 +236,7 @@ def get_full_data(origin, destination):
     df = extract_first_category(df)
     df = extract_second_category(df)
     df = extract_third_category(df)
-    df = extract_smaller_desc(df)
+    df = extract_description(df)
     df = clean_attrs(df)
     df = extract_shop_name(df)
     df = extract_shop_like_tier(df)
@@ -247,6 +248,8 @@ def get_full_data(origin, destination):
     df = clean_shipping(df)
     df = clean_numeric_field(df, "num_sold")
     df = clean_numeric_field(df, "num_review")
+
+    df = df.drop("prduct_desc")
     
     # Write
     write_file(df, destination)
@@ -257,7 +260,7 @@ def get_full_data(origin, destination):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Get full data')
+    parser = argparse.ArgumentParser(description='Get full shopee data')
 
     parser.add_argument('--origin', 
                         type=str,

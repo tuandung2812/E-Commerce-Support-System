@@ -10,7 +10,7 @@ spark = (SparkSession
     .getOrCreate())
 
 
-def load_file(path):
+def load_shopee(path):
     schema = StructType([
         StructField("attrs", StringType(), True),
         StructField("avg_rating", DoubleType(), True),
@@ -35,6 +35,30 @@ def load_file(path):
         StructField("shop_reply_time", StringType(), True),
         StructField("shop_creation_time", IntegerType(), True),
         StructField("shop_num_follower", IntegerType(), True)
+    ])
+
+    df = spark.read.format("csv").schema(schema).load(path)
+
+    return df
+
+def load_lazada(path):
+    schema = StructType([
+        StructField("product_name", StringType(), True), 
+        StructField("avg_rating", DoubleType(), True), 
+        StructField("price", IntegerType(), True), 
+        StructField("brand", StringType(), True), 
+        StructField("num_review", IntegerType(), True), 
+        StructField("attrs", StringType(), True), 
+        StructField("category", StringType(), True), 
+        StructField("description", StringType(), True), 
+        StructField("url", StringType(), True), 
+        StructField("first_category", StringType(), True), 
+        StructField("second_category", StringType(), True), 
+        StructField("third_category", StringType(), True), 
+        StructField("shop_name", StringType(), True), 
+        StructField("shop_rating", DoubleType(), True), 
+        StructField("ship_on_time", DoubleType(), True), 
+        StructField("shop_reply_percectage", DoubleType(), True)
     ])
 
     df = spark.read.format("csv").schema(schema).load(path)
@@ -103,9 +127,12 @@ def write_file(df, destination):
     print("Succeed!")
     return df
 
-def get_model_data(path, destination):
-    
-    df = load_file(path)
+def get_model_data(shopee_path, lazada_path, destination):
+
+    # Load data
+    shopee_data = load_shopee(shopee_path)
+    lazada_data = load_lazada(lazada_path)
+    df = shopee_data.unionByName(lazada_data, allowMissingColumns=True)
 
     df = fill_with_mean(df)
     df = drop_null_record(df)
@@ -122,9 +149,13 @@ def get_model_data(path, destination):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Get model data')
 
-    parser.add_argument('--origin', 
+    parser.add_argument('--shopee', 
                         type=str,
-                        help='Read location')
+                        help='Shopee read location')
+
+    parser.add_argument('--lazada', 
+                        type=str,
+                        help='Lazada read location')
 
     parser.add_argument('--destination', 
                         type=str,
@@ -132,4 +163,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    get_model_data(args.origin, args.destination)
+    get_model_data(args.shopee, args.lazada, args.destination)
