@@ -18,14 +18,24 @@ with DAG(
     catchup=True
 ) as dag:
 
-    task_crawl_url = BashOperator(
-        task_id='crawl_url',
+    task_crawl_shopee_url = BashOperator(
+        task_id='crawl_shopee_url',
         bash_command='python3 /home/jazzdung/E-Commerce-Support-System/main.py --site shopee --type url --num_page 1'
     )
 
-    task_crawl_data = BashOperator(
-        task_id='crawl_data',
+    task_crawl_lazada_url = BashOperator(
+        task_id='crawl_lazada_url',
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/main.py --site lazada --type url --num_page 1'
+    )
+
+    task_crawl_shopee_data = BashOperator(
+        task_id='crawl_shopee_data',
         bash_command='python3 /home/jazzdung/E-Commerce-Support-System/main.py --site shopee --type info'
+    )
+
+    task_crawl_lazada_data = BashOperator(
+        task_id='crawl_lazada_data',
+        bash_command='python3 /home/jazzdung/E-Commerce-Support-System/main.py --site lazada --type info'
     )
 
     task_clean_shopee_data = BashOperator(
@@ -49,4 +59,7 @@ with DAG(
     )
 
 
-    (task_crawl_url >> task_crawl_data >> [task_clean_shopee_data,task_clean_lazada_data] >> [task_get_visualize_data,task_get_model_data])
+    task_crawl_shopee_url >> task_crawl_shopee_data >> task_clean_shopee_data
+    task_crawl_lazada_url >> task_crawl_lazada_data >> task_clean_lazada_data
+    task_clean_shopee_data >> task_get_visualize_data
+    [task_clean_shopee_data, task_clean_lazada_data] >> task_get_model_data
