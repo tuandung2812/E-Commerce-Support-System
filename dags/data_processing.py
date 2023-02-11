@@ -48,12 +48,12 @@ with DAG(
         bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/lazada_data.py --origin hdfs://localhost:9000/user/hadoop/test_file --destination hdfs://localhost:9000/user/hadoop/lazada_full_data.csv'
     )
 
-    task_get_visualize_data = BashOperator(
+    task_create_visualize_data = BashOperator(
         task_id='create_visualize_data',
         bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/visualize_data.py --origin hdfs://localhost:9000/user/hadoop/full_data.csv --destination hdfs://localhost:9000/user/hadoop/visualiza_data.csv'
     )
 
-    task_get_model_data = BashOperator(
+    task_create_model_data = BashOperator(
         task_id='create_model_data',
         bash_command='python3 /home/jazzdung/E-Commerce-Support-System/script/model_data.py --shopee hdfs://localhost:9000/user/hadoop/shopee_full_data.csv --lazada hdfs://localhost:9000/user/hadoop/lazada_full_data.csv --destination hdfs://localhost:9000/user/hadoop/model_data.csv'
     )
@@ -61,5 +61,5 @@ with DAG(
 
     task_crawl_shopee_url >> task_crawl_shopee_data >> task_clean_shopee_data
     task_crawl_lazada_url >> task_crawl_lazada_data >> task_clean_lazada_data
-    task_clean_shopee_data >> task_get_visualize_data
-    [task_clean_shopee_data, task_clean_lazada_data] >> task_get_model_data
+    task_clean_shopee_data >> task_create_visualize_data
+    [task_clean_shopee_data, task_clean_lazada_data] >> task_create_model_data
